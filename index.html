@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoL MySite — ゲーム仲間募集サービス(プロトタイプ)</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <span class="logo"><a href="index.html">LoL MySite</a></span>
+      <nav class="nav">
+        <a href="index.html" class="active">募集一覧</a>
+        <a href="recruit-new.html">募集を作成</a>
+        <a href="mypage.html">マイページ</a>
+      </nav>
+      <button class="btn btn-discord btn-sm" onclick="mockAction('Discord OAuth ログインを開始します')">Discord でログイン</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1>一緒に遊ぶ仲間が、3分で見つかる。</h1>
+      <p>League of Legends のメンバー募集・応募の専門サービス。条件で探して、応募して、そのまま Discord に集合。</p>
+      <a class="btn btn-gold" href="recruit-new.html">募集を作成する</a>
+    </div>
+  </section>
+
+  <main class="container">
+    <div class="proto-note">⚠ これは画面イメージ確認用のプロトタイプです。表示されているのはサンプルデータで、操作内容は保存されません。</div>
+
+    <div class="filter-bar">
+      <div class="field">
+        <label for="f-mode">ゲームモード</label>
+        <select id="f-mode">
+          <option value="">すべて</option>
+          <option>ランク(フレックス)</option>
+          <option>ランク(デュオ)</option>
+          <option>ノーマル(ドラフト)</option>
+          <option>ARAM</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-rank">ランク帯</label>
+        <select id="f-rank">
+          <option value="">すべて</option>
+          <option>指定なし</option>
+          <option>ブロンズ</option>
+          <option>シルバー</option>
+          <option>ゴールド</option>
+          <option>プラチナ</option>
+          <option>ダイヤ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-lane">空きレーン</label>
+        <select id="f-lane">
+          <option value="">すべて</option>
+          <option>TOP</option>
+          <option>JG</option>
+          <option>MID</option>
+          <option>ADC</option>
+          <option>SUP</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-open">状態</label>
+        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; color: var(--text);">
+          <input type="checkbox" id="f-open" checked> 募集中のみ
+        </label>
+      </div>
+    </div>
+
+    <ul id="recruit-list" class="card-list"></ul>
+  </main>
+
+  <footer class="site-footer">
+    <div class="links">
+      <a href="#" onclick="event.preventDefault(); mockAction('利用規約ページ(未実装)')">利用規約</a>
+      <a href="#" onclick="event.preventDefault(); mockAction('プライバシーポリシーページ(未実装)')">プライバシーポリシー</a>
+      <a href="#" onclick="event.preventDefault(); mockAction('コミュニティガイドラインページ(未実装)')">コミュニティガイドライン</a>
+    </div>
+    <div>LoL MySite プロトタイプ — 要件は <a href="https://github.com/mizzen2438/lolmysite/blob/claude/gaming-recruitment-service-nfoale/REQUIREMENTS.md">REQUIREMENTS.md</a> を参照</div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

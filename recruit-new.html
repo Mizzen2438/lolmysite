@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>募集を作成 — LoL MySite(プロトタイプ)</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <span class="logo"><a href="index.html">LoL MySite</a></span>
+      <nav class="nav">
+        <a href="index.html">募集一覧</a>
+        <a href="recruit-new.html" class="active">募集を作成</a>
+        <a href="mypage.html">マイページ</a>
+      </nav>
+      <button class="btn btn-discord btn-sm" onclick="mockAction('Discord OAuth ログインを開始します')">Discord でログイン</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="proto-note">⚠ プロトタイプのため、入力内容は保存されません。</div>
+
+    <div class="panel">
+      <h2>募集を作成</h2>
+      <div class="form-grid">
+
+        <div class="form-row">
+          <label for="n-mode">ゲームモード</label>
+          <select id="n-mode">
+            <option>ランク(フレックス)</option>
+            <option>ランク(デュオ)</option>
+            <option>ノーマル(ドラフト)</option>
+            <option>ARAM</option>
+            <option>カスタム</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>募集するレーン(複数選択可)</label>
+          <div class="check-group">
+            <label><input type="checkbox" value="TOP"> TOP</label>
+            <label><input type="checkbox" value="JG"> JG</label>
+            <label><input type="checkbox" value="MID" checked> MID</label>
+            <label><input type="checkbox" value="ADC" checked> ADC</label>
+            <label><input type="checkbox" value="SUP"> SUP</label>
+            <label><input type="checkbox" value="FILL"> FILL(指定なし)</label>
+          </div>
+          <span class="hint">自分の担当レーンはマイページのプロフィールから設定されます。</span>
+        </div>
+
+        <div class="form-row">
+          <label>対象ランク帯</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="n-rank-min">
+              <option>指定なし</option>
+              <option>アイアン</option>
+              <option>ブロンズ</option>
+              <option selected>シルバー</option>
+              <option>ゴールド</option>
+              <option>プラチナ</option>
+              <option>エメラルド</option>
+              <option>ダイヤ以上</option>
+            </select>
+            <span>〜</span>
+            <select id="n-rank-max">
+              <option>指定なし</option>
+              <option>アイアン</option>
+              <option>ブロンズ</option>
+              <option>シルバー</option>
+              <option>ゴールド</option>
+              <option selected>プラチナ</option>
+              <option>エメラルド</option>
+              <option>ダイヤ以上</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="n-start">開始予定時刻</label>
+          <input type="datetime-local" id="n-start">
+        </div>
+
+        <div class="form-row">
+          <label for="n-duration">想定プレイ時間</label>
+          <select id="n-duration">
+            <option>1時間</option>
+            <option selected>2〜3時間</option>
+            <option>3時間以上</option>
+            <option>決めない</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="n-vc">ボイスチャット</label>
+          <select id="n-vc">
+            <option>Discord VC(必須)</option>
+            <option selected>Discord VC(聞き専OK)</option>
+            <option>なし(ゲーム内チャットのみ)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>雰囲気タグ(複数選択可)</label>
+          <div class="check-group">
+            <label><input type="checkbox"> ガチ</label>
+            <label><input type="checkbox" checked> エンジョイ</label>
+            <label><input type="checkbox"> 初心者歓迎</label>
+            <label><input type="checkbox" checked> 聞き専OK</label>
+            <label><input type="checkbox"> 社会人</label>
+            <label><input type="checkbox"> 学生</label>
+            <label><input type="checkbox"> 深夜帯</label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="n-discord">Discord サーバー招待リンク(任意)</label>
+          <input type="url" id="n-discord" placeholder="https://discord.gg/...">
+          <span class="hint">🔒 このリンクは応募を承認した参加者にのみ表示されます。募集ページには公開されません。</span>
+        </div>
+
+        <div class="form-row">
+          <label for="n-comment">フリーコメント</label>
+          <textarea id="n-comment" placeholder="例: フレックス回せる方募集です!勝ち負けより楽しく。VCは聞き専でも大丈夫です。"></textarea>
+        </div>
+
+        <button class="btn btn-gold btn-block" onclick="mockAction('募集を公開しました。応募が入ると通知されます。')">この内容で募集を公開する</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div>LoL MySite プロトタイプ</div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

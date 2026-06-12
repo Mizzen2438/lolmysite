@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マイページ — LoL MySite(プロトタイプ)</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <span class="logo"><a href="index.html">LoL MySite</a></span>
+      <nav class="nav">
+        <a href="index.html">募集一覧</a>
+        <a href="recruit-new.html">募集を作成</a>
+        <a href="mypage.html" class="active">マイページ</a>
+      </nav>
+      <button class="btn btn-discord btn-sm" onclick="mockAction('Discord OAuth ログインを開始します')">Discord でログイン</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="proto-note">⚠ プロトタイプのため、サンプルユーザー「Hikari#JP1」としてログインしている想定の画面です。</div>
+
+    <div class="panel">
+      <div class="profile-head">
+        <span class="avatar">H</span>
+        <div>
+          <div class="name">Hikari#JP1</div>
+          <div class="sub">Discord: hikari_lol ・ GG率 96%(48件の評価)</div>
+        </div>
+        <span class="spacer" style="flex: 1;"></span>
+        <button class="btn btn-ghost btn-sm" onclick="mockAction('プロフィール編集画面(未実装)')">編集</button>
+      </div>
+      <dl class="kv" style="margin-top: 16px;">
+        <dt>Riot ID</dt><dd>Hikari#JP1</dd>
+        <dt>ランク(ソロ)</dt><dd>ゴールド II</dd>
+        <dt>ランク(フレックス)</dt><dd>ゴールド IV</dd>
+        <dt>得意レーン</dt><dd>TOP / MID</dd>
+        <dt>プレイ時間帯</dt><dd>平日 21時〜24時 / 休日 昼〜</dd>
+        <dt>VC スタイル</dt><dd>通話 OK</dd>
+        <dt>自己紹介</dt><dd>社会人ゲーマーです。楽しく勝ちたい派。気軽に誘ってください!</dd>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <h2>自分の募集</h2>
+      <a class="recruit-card" href="recruit-detail.html?id=1">
+        <div class="head">
+          <span class="badge badge-mode">ランク(フレックス)</span>
+          <span class="badge badge-status-open">募集中</span>
+          <span class="title">今日 22:00 開始 — MID / ADC 募集中(3/5)</span>
+        </div>
+      </a>
+
+      <h3>応募者の管理(2件)</h3>
+      <div id="applicant-list"></div>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-ghost btn-sm" onclick="mockAction('募集を締め切りました。')">募集を締め切る</button>
+        <button class="btn btn-danger btn-sm" onclick="mockAction('募集を削除しました。参加者には通知されます。')">募集を削除</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>応募中の募集</h2>
+      <div class="member-row">
+        <div>
+          <div class="name"><a href="recruit-detail.html?id=4">ノーマル(ドラフト)— 明日 20:00</a></div>
+          <div class="sub">希望レーン: TOP ・ ステータス: 承認待ち</div>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" onclick="mockAction('応募を取り下げました。')">取り下げ</button>
+      </div>
+      <div class="member-row">
+        <div>
+          <div class="name"><a href="recruit-detail.html?id=3">ARAM — 今日 23:00</a></div>
+          <div class="sub">ステータス: <span style="color: var(--gold);">承認済み(成立)</span> 🎉 Discord 集合案内あり</div>
+        </div>
+        <span class="spacer"></span>
+        <a class="btn btn-discord btn-sm" href="recruit-detail.html?id=3">集合案内を見る</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div>LoL MySite プロトタイプ</div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
