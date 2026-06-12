@@ -1,6 +1,6 @@
 # 要件定義書 — ゲーム仲間募集サービス(仮称: LoL MySite)
 
-- 版数: 1.0(ドラフト)
+- 版数: 1.1(ドラフト)— 複数アカウント/スマーフ禁止と Riot API ランク連携をフェーズ 1 に追加
 - 作成日: 2026-06-12
 - 対象フェーズ: フェーズ 1(League of Legends 専門の MVP)
 
@@ -63,7 +63,7 @@
 
 | フェーズ | 内容 |
 |---|---|
-| フェーズ 1(本書の対象 / MVP) | LoL 専門。募集の作成・検索・応募・承認・Discord 集合導線・基本的な通知と安全機能 |
+| フェーズ 1(本書の対象 / MVP) | LoL 専門。募集の作成・検索・応募・承認・Discord 集合導線・基本的な通知と安全機能。Riot API 連携によるランク自動取得と、アカウント一意性(サブ垢・スマーフ禁止)の担保 |
 | フェーズ 2 | 評価(GG レビュー)の本格運用、定期/固定メンバー募集、Discord Bot による通知強化 |
 | フェーズ 3 | 他ゲームへの拡張(ゲームマスタの追加)、スマホアプリ化の検討 |
 
@@ -86,11 +86,23 @@
 |---|---|---|
 | F-ACC-01 | ユーザーは Discord OAuth2 でログイン/新規登録できる(独自パスワードは持たない) | Must |
 | F-ACC-02 | 初回ログイン時、Discord のユーザー名・アバターをプロフィールに自動取り込みする | Must |
-| F-ACC-03 | プロフィールに Riot ID(ゲーム名#タグライン)を登録できる | Must |
-| F-ACC-04 | プロフィールにランク(ソロ/フレックス)、得意レーン(複数可)、主なプレイ時間帯、自己紹介文を登録できる | Must |
+| F-ACC-03 | プロフィールに Riot ID(ゲーム名#タグライン)を登録できる。登録時に Riot API(Account-V1)で実在確認を行う | Must |
+| F-ACC-04 | プロフィールに得意レーン(複数可)、主なプレイ時間帯、自己紹介文を登録できる | Must |
 | F-ACC-05 | プロフィールに VC スタイル(通話 OK / 聞き専 / テキストのみ)を登録できる | Must |
-| F-ACC-06 | Riot API と連携し、ランクを自動取得・検証する | Could |
+| F-ACC-06 | Riot API(League-V4)と連携し、ランク(ソロ/フレックス)を自動取得してプロフィールに表示する。ランクは自己申告できず、API 取得値のみを正とする(スマーフ申告の防止) | Must |
 | F-ACC-07 | ユーザーは退会でき、退会時に個人情報は削除される(募集・応募履歴は匿名化して保持) | Must |
+| F-ACC-08 | ランクは定期的(例: 24 時間ごと)およびユーザーの手動更新操作で再取得し、最終取得日時を表示する | Must |
+
+#### アカウントの一意性(サブ垢・スマーフ対策)
+
+| ID | 要件 | 優先度 |
+|---|---|---|
+| F-UNIQ-01 | アカウントは 1 人 1 つとする。複数アカウント(サブ垢)の作成・利用を利用規約で禁止する | Must |
+| F-UNIQ-02 | 1 つの Discord アカウントにつき登録できるサービスアカウントは 1 つのみとする(Discord ID で一意化) | Must |
+| F-UNIQ-03 | 1 つの Riot アカウント(PUUID)を登録できるユーザーは 1 人のみとする。他ユーザーが登録済みの Riot ID は登録できない | Must |
+| F-UNIQ-04 | 退会後の再登録時、同一 Discord ID の過去の凍結・警告履歴を引き継ぐ(凍結逃れのための作り直しを防止) | Must |
+| F-UNIQ-05 | スマーフ行為(メインより低ランクのアカウントでの参加、実力を偽った低ランク帯募集への参加)を利用規約・ガイドラインで禁止する | Must |
+| F-UNIQ-06 | 運営者は同一人物による複数アカウントの疑いを調査し、該当アカウントを凍結できる | Must |
 
 ### 4.2 募集(Recruitment)
 
@@ -153,7 +165,7 @@
 
 | ID | 要件 | 優先度 |
 |---|---|---|
-| F-SAFE-01 | ユーザー・募集を通報できる(理由選択+自由記述) | Must |
+| F-SAFE-01 | ユーザー・募集を通報できる(理由選択+自由記述)。通報理由には「サブ垢・スマーフの疑い」を含める | Must |
 | F-SAFE-02 | ユーザーをブロックできる。ブロックした相手の募集は非表示になり、相手は自分の募集に応募できない | Must |
 | F-SAFE-03 | プレイ終了後、参加者同士で評価(GG レビュー: Good / Bad +任意コメント)を送れる | Should |
 | F-SAFE-04 | 評価の集計値(GG 率など)をプロフィールに表示する | Should |
@@ -161,6 +173,7 @@
 | F-SAFE-06 | コミュニティガイドライン・利用規約・プライバシーポリシーを掲示し、登録時に同意を取得する | Must |
 | F-SAFE-07 | 運営者は通報を確認し、ユーザーの警告・凍結・募集の非公開化ができる(管理画面) | Must |
 | F-SAFE-08 | NG ワードフィルタにより不適切な募集文・コメントを抑止する | Should |
+| F-SAFE-09 | ランクと募集条件の不一致(API 取得ランクが募集のランク帯条件を満たさない応募)はシステムが警告または応募不可とする | Should |
 
 ---
 
@@ -180,6 +193,8 @@
 | N-10 | UI | 日本語 UI。ダークテーマ基調(ゲーマーの利用環境を考慮) |
 | N-11 | 拡張性 | ゲームタイトルをマスタデータ化し、コード変更を最小限に新ゲームを追加できる構造とする |
 | N-12 | 運用 | エラー監視・アクセスログを取得し、障害時に原因を追跡できる |
+| N-13 | 外部連携 | Riot API のレートリミットとポリシーを遵守する。取得結果をキャッシュし、API 障害時もキャッシュ値(最終取得日時付き)でサービスを継続できる |
+| N-14 | 外部連携 | Riot API キーは本番用(Production API Key)の承認を取得して運用する |
 
 ---
 
@@ -214,7 +229,7 @@ User ──< Notification
 
 | エンティティ | 主な属性 |
 |---|---|
-| **User** | id, discord_id, discord_name, avatar_url, riot_id, rank_solo, rank_flex, lanes[], play_hours, vc_style, bio, gg_rate, created_at, deleted_at |
+| **User** | id, discord_id(**unique**), discord_name, avatar_url, riot_id, riot_puuid(**unique**), rank_solo, rank_flex, rank_fetched_at(ランクは Riot API 取得値のみ), lanes[], play_hours, vc_style, bio, gg_rate, status(active/warned/suspended), created_at, deleted_at |
 | **Game** | id, name, slug, modes[], rank_tiers[], lanes[](ゲームごとの役割定義。LoL なら TOP/JG/MID/ADC/SUP) |
 | **Recruitment** | id, game_id, owner_id, mode, slots[](レーン×人数), rank_min, rank_max, start_at, duration, vc_required, vc_tool, tags[], comment, discord_invite_url, status(open/filled/closed/expired), created_at |
 | **Application** | id, recruitment_id, applicant_id, desired_lane, comment, status(pending/approved/rejected/withdrawn/declined), created_at |
@@ -222,6 +237,7 @@ User ──< Notification
 | **Report** | id, reporter_id, target_type(user/recruitment), target_id, reason, detail, status |
 | **Block** | id, user_id, blocked_user_id |
 | **Notification** | id, user_id, type, payload, read_at, created_at |
+| **SanctionRecord** | id, discord_id, type(warning/suspension), reason, created_at(退会後も Discord ID 単位で保持し、再登録時に引き継ぐ → F-UNIQ-04) |
 
 > 拡張ポイント: ランク帯・レーン・モードは `Game` 側の定義を参照する。LoL 固有の値をコードに埋め込まないことで、フェーズ 3 のゲーム追加をマスタ登録のみで行えるようにする。
 
@@ -231,7 +247,9 @@ User ──< Notification
 
 ### MVP(フェーズ 1)に含める
 
-- Discord OAuth ログイン、プロフィール(F-ACC-01〜05, 07)
+- Discord OAuth ログイン、プロフィール(F-ACC-01〜08)
+- **Riot API 連携によるランク自動取得・Riot ID 実在確認**(F-ACC-03, 06, 08)
+- **アカウント一意性・サブ垢/スマーフ禁止**(F-UNIQ-01〜06)
 - 募集の作成・編集・締切・自動期限切れ・成立(F-REC-01〜07)
 - 一覧・フィルタ検索(F-SRCH-01〜02)
 - 応募・承認・定員管理(F-APP-01〜06)
@@ -241,7 +259,6 @@ User ──< Notification
 
 ### MVP に含めない(フェーズ 2 以降)
 
-- Riot API 連携によるランク自動検証(F-ACC-06)
 - 定期募集・テンプレート(F-REC-08, 09)
 - おすすめ・保存検索(F-SRCH-04, 05)
 - GG レビューの本格運用(F-SAFE-03〜05)
