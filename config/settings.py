@@ -236,6 +236,11 @@ CSRF_TRUSTED_ORIGINS = [
 # F-UNIQ-07: minimum Discord account age (in days) required to register.
 MIN_DISCORD_ACCOUNT_AGE_DAYS = int(os.environ.get("MIN_DISCORD_ACCOUNT_AGE_DAYS", "90"))
 
+# Local demo mode: passwordless dev login that bypasses Discord OAuth so the
+# full flow can be tried without credentials. Defaults to DEBUG; never enable
+# in real production.
+DEV_LOGIN_ENABLED = env_bool("DEV_LOGIN_ENABLED", DEBUG)
+
 # F-SAFE-08: simple NG-word filter for recruitment text. Comma-separated env override.
 NG_WORDS = [
     w.strip()

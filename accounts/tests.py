@@ -294,3 +294,33 @@ class RefreshRanksCommandTests(TestCase):
             call_command("refresh_ranks", "--sleep", "0")
         active.refresh_from_db()
         self.assertEqual(active.rank_solo, "ゴールド I")
+
+
+class DevLoginTests(TestCase):
+    @override_settings(DEV_LOGIN_ENABLED=False)
+    def test_dev_login_404_when_disabled(self):
+        self.assertEqual(self.client.get(reverse("dev_login")).status_code, 404)
+
+    @override_settings(DEV_LOGIN_ENABLED=True)
+    def test_dev_login_logs_in_when_enabled(self):
+        user = User.objects.create_user(discord_id="dev-1", discord_name="demo")
+        user.terms_agreed_at = timezone.now()
+        user.profile_completed = True
+        user.save()
+        self.assertEqual(self.client.get(reverse("dev_login")).status_code, 200)
+        resp = self.client.post(reverse("dev_login"), {"user_id": user.pk})
+        self.assertRedirects(resp, reverse("post_login"), target_status_code=302)
+        self.assertEqual(self.client.session.get("_auth_user_id"), str(user.pk))
+
+
+class SeedDemoCommandTests(TestCase):
+    def test_seed_creates_data_and_is_idempotent(self):
+        call_command("seed_demo")
+        from applications.models import Application
+        from recruitments.models import Recruitment
+
+        self.assertEqual(User.objects.filter(discord_id__startswith="9000").count(), 4)
+        self.assertEqual(Recruitment.objects.count(), 3)
+        self.assertEqual(Application.objects.count(), 1)
+        call_command("seed_demo")  # second run must not duplicate
+        self.assertEqual(Recruitment.objects.count(), 3)

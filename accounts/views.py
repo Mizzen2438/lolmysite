@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ProfileForm, RiotLinkForm
 from .services import RiotLinkError, can_refresh, link_riot_account, refresh_rank
+
+User = get_user_model()
 
 
 def home(request):
@@ -18,7 +24,23 @@ def login_view(request):
     """Landing page with the 'Sign in with Discord' button."""
     if request.user.is_authenticated:
         return redirect("post_login")
-    return render(request, "accounts/login.html")
+    return render(request, "accounts/login.html", {"dev_login_enabled": settings.DEV_LOGIN_ENABLED})
+
+
+def dev_login(request):
+    """Passwordless login for local demos only (bypasses Discord OAuth).
+
+    Disabled unless settings.DEV_LOGIN_ENABLED (defaults to DEBUG); returns 404
+    otherwise so it can never be reached in production.
+    """
+    if not settings.DEV_LOGIN_ENABLED:
+        raise Http404()
+    if request.method == "POST":
+        user = get_object_or_404(User, pk=request.POST.get("user_id"), is_active=True)
+        auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        return redirect("post_login")
+    users = User.objects.filter(is_superuser=False, is_active=True).order_by("discord_name")
+    return render(request, "accounts/dev_login.html", {"users": users})
 
 
 @login_required

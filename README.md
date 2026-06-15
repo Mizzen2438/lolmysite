@@ -22,6 +22,25 @@ League of Legends のメンバー募集・応募の専門サービス。
 
 MVP(フェーズ 1)の全マイルストーン M1〜M7 が完了。本番デプロイ手順は [DEPLOYMENT.md](./DEPLOYMENT.md) を参照。
 
+## ローカルデモモード(Discord / Riot の認証情報なしで試す)
+
+Discord OAuth や Riot API キーを用意しなくても、サンプルデータ + パスワードレスの
+開発用ログインで全フロー(募集作成 → 応募 → 承認 → 成立 → 集合案内)を試せる。
+**`DEBUG=True` のときのみ有効**(本番では `/dev-login/` は 404)。
+
+```bash
+python manage.py migrate
+python manage.py seed_demo      # デモユーザー4名・募集3件・応募1件を投入(冪等)
+python manage.py runserver
+```
+
+ブラウザで `http://127.0.0.1:8000/login/` →「ローカルデモログイン(Discord 不要)」、
+または直接 `http://127.0.0.1:8000/dev-login/` から好きなデモユーザーでログインする。
+「デモ太郎」でログインすると、自分の募集に届いた「デモ次郎」の応募を承認 → 成立 →
+Discord 集合案内まで確認できる。
+
+> 本番で誤って有効化しないこと。`DEV_LOGIN_ENABLED` は既定で `DEBUG` に従う。
+
 ## Discord OAuth の設定(M2)
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) でアプリを作成

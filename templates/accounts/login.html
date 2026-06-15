@@ -16,5 +16,9 @@
     ログインすると利用規約・コミュニティガイドラインに同意したものとみなされます。<br>
     作成から日の浅い Discord アカウントはご利用いただけません。
   </p>
+  {% if dev_login_enabled %}
+    <hr style="border-color: var(--border); margin: 18px 0;">
+    <a class="btn btn-ghost btn-block" href="{% url 'dev_login' %}">ローカルデモログイン(Discord 不要)</a>
+  {% endif %}
 </div>
 {% endblock %}
