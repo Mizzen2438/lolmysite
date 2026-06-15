@@ -53,6 +53,9 @@ INSTALLED_APPS = [
     "accounts",
     "games",
     "recruitments",
+    "applications",
+    "notifications",
+    "moderation",
 ]
 
 MIDDLEWARE = [
@@ -82,6 +85,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "notifications.views.unread_count",
             ],
         },
     },

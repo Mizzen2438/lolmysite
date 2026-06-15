@@ -114,4 +114,18 @@ def riot_refresh(request):
 
 @login_required
 def mypage(request):
-    return render(request, "accounts/mypage.html", {"can_refresh": can_refresh(request.user)})
+    my_recruitments = request.user.recruitments.prefetch_related("slots").all()[:20]
+    my_applications = (
+        request.user.applications.select_related("recruitment")
+        .exclude(status__in=["withdrawn", "rejected"])
+        .all()[:20]
+    )
+    return render(
+        request,
+        "accounts/mypage.html",
+        {
+            "can_refresh": can_refresh(request.user),
+            "my_recruitments": my_recruitments,
+            "my_applications": my_applications,
+        },
+    )

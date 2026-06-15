@@ -59,17 +59,42 @@ def recruitment_list(request):
 
 
 def recruitment_detail(request, pk):
+    from applications import services
+    from applications.models import Application
+
     recruitment = get_object_or_404(
         Recruitment.objects.select_related("owner", "game").prefetch_related("slots__member"),
         pk=pk,
     )
+    is_owner = recruitment.is_owner(request.user)
+
+    viewer_application = None
+    apply_error = None
+    pending_applications = None
+    if request.user.is_authenticated:
+        viewer_application = recruitment.applications.filter(applicant=request.user).first()
+        if not is_owner:
+            try:
+                services.check_can_apply(request.user, recruitment)
+            except services.ApplicationError as exc:
+                apply_error = str(exc)
+    if is_owner:
+        pending_applications = (
+            recruitment.applications.filter(status=Application.Status.PENDING)
+            .select_related("applicant")
+        )
+
     return render(
         request,
         "recruitments/detail.html",
         {
             "recruitment": recruitment,
-            "is_owner": recruitment.is_owner(request.user),
+            "is_owner": is_owner,
             "can_view_invite": recruitment.can_view_invite(request.user),
+            "open_lanes": sorted(set(recruitment.open_lanes())),
+            "viewer_application": viewer_application,
+            "apply_error": apply_error,
+            "pending_applications": pending_applications,
         },
     )
 
@@ -114,6 +139,7 @@ def recruitment_close(request, pk):
     if recruitment.status == Recruitment.Status.OPEN:
         recruitment.status = Recruitment.Status.CLOSED
         recruitment.save(update_fields=["status"])
+        _notify_participants(recruitment, "closed")
         messages.success(request, "募集を締め切りました。")
     return redirect("recruitment_detail", pk=pk)
 
@@ -125,6 +151,28 @@ def recruitment_delete(request, pk):
     if not recruitment.is_owner(request.user):
         messages.error(request, "権限がありません。")
         return redirect("recruitment_detail", pk=pk)
+    _notify_participants(recruitment, "deleted")
     recruitment.delete()
     messages.success(request, "募集を削除しました。")
     return redirect("recruitment_list")
+
+
+def _notify_participants(recruitment, kind):
+    """Notify approved members (other than the owner) of a change (F-NTF-04)."""
+    from notifications.models import Notification, notify
+
+    type_map = {
+        "closed": (Notification.Type.RECRUITMENT_CLOSED, "募集が締め切られました。"),
+        "deleted": (Notification.Type.RECRUITMENT_DELETED, "参加予定の募集が削除されました。"),
+    }
+    ntype, message = type_map[kind]
+    member_ids = (
+        recruitment.slots.filter(member__isnull=False)
+        .exclude(member_id=recruitment.owner_id)
+        .values_list("member_id", flat=True)
+    )
+    from accounts.models import User
+
+    for member in User.objects.filter(pk__in=set(member_ids)):
+        rid = None if kind == "deleted" else recruitment.pk
+        notify(member, ntype, message=f"「{recruitment.mode}」: {message}", recruitment_id=rid)
