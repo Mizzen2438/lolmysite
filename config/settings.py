@@ -160,6 +160,27 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+# --- Cache --------------------------------------------------------------
+
+# Redis in production (CACHE_URL), in-memory locally. Used to cache Riot API
+# responses (N-13) and enforce the manual rank-refresh cooldown.
+CACHE_URL = os.environ.get("CACHE_URL", "")
+if CACHE_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": CACHE_URL}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# --- Riot API (M3) ------------------------------------------------------
+
+RIOT_API_KEY = os.environ.get("RIOT_API_KEY", "")
+# Platform routing (rank endpoints) and regional routing (account endpoint).
+RIOT_PLATFORM = os.environ.get("RIOT_PLATFORM", "jp1")
+RIOT_REGIONAL = os.environ.get("RIOT_REGIONAL", "asia")
+# How long Riot responses stay cached (seconds); default 24h (N-13, F-ACC-08).
+RIOT_CACHE_TTL = int(os.environ.get("RIOT_CACHE_TTL", str(60 * 60 * 24)))
+# Minimum interval between user-triggered rank refreshes (seconds).
+RIOT_REFRESH_COOLDOWN = int(os.environ.get("RIOT_REFRESH_COOLDOWN", "600"))
+
 # --- Internationalization ----------------------------------------------
 
 LANGUAGE_CODE = "ja"

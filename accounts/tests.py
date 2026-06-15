@@ -1,14 +1,18 @@
 from datetime import UTC, datetime
 from time import time
 from types import SimpleNamespace
+from unittest import mock
 
 from allauth.core.exceptions import ImmediateHttpResponse
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.core.management import call_command
 from django.db import IntegrityError
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from . import riot, services
 from .adapters import DiscordSocialAccountAdapter
 from .models import SanctionRecord
 from .utils import discord_id_to_created_at, is_discord_account_old_enough
@@ -143,7 +147,8 @@ class OnboardingFlowTests(TestCase):
             reverse("profile_setup"),
             {"lanes": ["TOP", "MID"], "play_hours": "夜", "vc_style": "talk", "bio": "よろしく"},
         )
-        self.assertRedirects(resp, reverse("mypage"))
+        # Profile setup leads into Riot linking (M3).
+        self.assertRedirects(resp, reverse("riot_link"))
         self.user.refresh_from_db()
         self.assertTrue(self.user.profile_completed)
         self.assertEqual(self.user.lanes, ["TOP", "MID"])
@@ -154,3 +159,138 @@ class OnboardingFlowTests(TestCase):
         self.user.save(update_fields=["terms_agreed_at", "profile_completed"])
         resp = self.client.get(reverse("mypage"))
         self.assertEqual(resp.status_code, 200)
+
+
+class RiotFormatTests(TestCase):
+    def test_format_rank_with_division(self):
+        self.assertEqual(riot.format_rank({"tier": "GOLD", "rank": "II"}), "ゴールド II")
+
+    def test_format_rank_master_has_no_division(self):
+        self.assertEqual(riot.format_rank({"tier": "MASTER", "rank": "I"}), "マスター")
+
+    def test_format_rank_unknown_tier_is_empty(self):
+        self.assertEqual(riot.format_rank({}), "")
+
+
+@override_settings(RIOT_API_KEY="test-key")
+class RiotClientTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_404_maps_to_not_found(self):
+        resp = SimpleNamespace(status_code=404, headers={}, json=lambda: {})
+        with mock.patch("accounts.riot.httpx.get", return_value=resp):
+            with self.assertRaises(riot.RiotNotFound):
+                riot.resolve_account("Nope", "JP1")
+
+    def test_success_is_cached(self):
+        resp = SimpleNamespace(
+            status_code=200, headers={}, json=lambda: {"puuid": "PU", "gameName": "H", "tagLine": "JP1"}
+        )
+        with mock.patch("accounts.riot.httpx.get", return_value=resp) as get:
+            riot.resolve_account("H", "JP1")
+            riot.resolve_account("H", "JP1")  # served from cache
+        self.assertEqual(get.call_count, 1)
+
+    def test_missing_key_raises_config_error(self):
+        with override_settings(RIOT_API_KEY=""):
+            with self.assertRaises(riot.RiotConfigError):
+                riot.resolve_account("H", "JP1")
+
+
+class RiotServiceTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(discord_id="link-1")
+
+    def _patch(self, ranks=None):
+        ranks = ranks or {"solo": "ゴールド II", "flex": ""}
+        return (
+            mock.patch.object(
+                services.riot, "resolve_account",
+                return_value={"puuid": "PUUID-1", "gameName": "Hikari", "tagLine": "JP1"},
+            ),
+            mock.patch.object(services.riot, "fetch_ranks", return_value=ranks),
+        )
+
+    def test_link_success_sets_puuid_and_rank(self):
+        p1, p2 = self._patch()
+        with p1, p2:
+            services.link_riot_account(self.user, "Hikari", "JP1")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.riot_puuid, "PUUID-1")
+        self.assertEqual(self.user.riot_id, "Hikari#JP1")
+        self.assertEqual(self.user.rank_solo, "ゴールド II")
+        self.assertIsNotNone(self.user.rank_fetched_at)
+
+    def test_link_duplicate_puuid_is_rejected(self):
+        User.objects.create_user(discord_id="other", riot_puuid="PUUID-1")
+        p1, p2 = self._patch()
+        with p1, p2, self.assertRaises(services.RiotLinkError):
+            services.link_riot_account(self.user, "Hikari", "JP1")
+
+    def test_link_not_found_raises(self):
+        with mock.patch.object(services.riot, "resolve_account", side_effect=riot.RiotNotFound):
+            with self.assertRaises(services.RiotLinkError):
+                services.link_riot_account(self.user, "Ghost", "JP1")
+
+    def test_refresh_respects_cooldown(self):
+        self.user.riot_puuid = "PUUID-1"
+        self.user.rank_fetched_at = timezone.now()
+        self.user.save()
+        self.assertFalse(services.can_refresh(self.user))
+        with self.assertRaises(services.RiotLinkError):
+            services.refresh_rank(self.user)
+
+    def test_refresh_force_ignores_cooldown(self):
+        self.user.riot_puuid = "PUUID-1"
+        self.user.rank_fetched_at = timezone.now()
+        self.user.save()
+        with mock.patch.object(services.riot, "fetch_ranks", return_value={"solo": "プラチナ IV", "flex": ""}):
+            services.refresh_rank(self.user, force=True)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.rank_solo, "プラチナ IV")
+
+
+class RiotViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(discord_id="view-1")
+        self.user.terms_agreed_at = timezone.now()
+        self.user.profile_completed = True
+        self.user.save()
+        self.client.force_login(self.user, backend="django.contrib.auth.backends.ModelBackend")
+
+    def test_riot_link_post_success_redirects_to_mypage(self):
+        with mock.patch("accounts.views.link_riot_account") as link:
+            resp = self.client.post(
+                reverse("riot_link"), {"game_name": "Hikari", "tagline": "JP1"}
+            )
+        link.assert_called_once()
+        self.assertRedirects(resp, reverse("mypage"))
+
+    def test_riot_link_post_error_stays_on_page(self):
+        with mock.patch(
+            "accounts.views.link_riot_account",
+            side_effect=services.RiotLinkError("見つかりません"),
+        ):
+            resp = self.client.post(
+                reverse("riot_link"), {"game_name": "Ghost", "tagline": "JP1"}
+            )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_refresh_requires_post(self):
+        resp = self.client.get(reverse("riot_refresh"))
+        self.assertEqual(resp.status_code, 405)
+
+
+class RefreshRanksCommandTests(TestCase):
+    def test_refreshes_active_linked_users(self):
+        active = User.objects.create_user(discord_id="active", riot_puuid="P-A")
+        active.last_login = timezone.now()
+        active.save()
+        # Inactive (no recent login) and unlinked users are skipped.
+        User.objects.create_user(discord_id="unlinked")
+        with mock.patch.object(services.riot, "fetch_ranks", return_value={"solo": "ゴールド I", "flex": ""}):
+            call_command("refresh_ranks", "--sleep", "0")
+        active.refresh_from_db()
+        self.assertEqual(active.rank_solo, "ゴールド I")

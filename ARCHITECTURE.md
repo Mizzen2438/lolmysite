@@ -17,7 +17,7 @@
 | 認証 | **django-allauth**(Discord プロバイダ) | Discord OAuth2 ログイン(F-ACC-01) |
 | DB | **PostgreSQL 16** | 本番。ローカル開発は Docker Compose で同一バージョン |
 | キャッシュ | Redis | Riot API レスポンスのキャッシュ(N-13)、セッション |
-| 非同期・定期処理 | **Celery + Celery Beat**(ブローカー: Redis) | ランク定期更新、募集の自動期限切れ、通知 |
+| 定期処理 | **管理コマンド + スケジューラ**(Render Cron / Celery Beat / cron) | ランク定期更新・募集の自動期限切れは管理コマンドで実装し外部スケジューラで日次/分次実行。即時の非同期処理が必要になった段階で Celery を追加する |
 | HTTP クライアント | httpx | Riot API 呼び出し |
 | フロントエンド | Django テンプレート + 素の JS(既存プロトタイプの CSS/JS を移植) | MVP では SPA を採用しない |
 | エラー監視 | Sentry(無料枠) | N-12 |

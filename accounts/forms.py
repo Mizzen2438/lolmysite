@@ -36,3 +36,14 @@ class ProfileForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["lanes"].choices = _lane_choices()
+
+
+class RiotLinkForm(forms.Form):
+    game_name = forms.CharField(
+        label="ゲーム名", max_length=64,
+        widget=forms.TextInput(attrs={"placeholder": "例: Hikari"}),
+    )
+    tagline = forms.CharField(
+        label="タグライン", max_length=16,
+        widget=forms.TextInput(attrs={"placeholder": "例: JP1"}),
+    )

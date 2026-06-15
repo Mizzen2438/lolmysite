@@ -16,11 +16,24 @@
   <dl class="kv" style="margin-top: 16px;">
     <dt>Riot ID</dt>
     <dd>
-      {% if user.is_riot_linked %}{{ user.riot_id }}
-      {% else %}<span style="color: var(--text-dim);">未連携(次のマイルストーンで実装)</span>{% endif %}
+      {% if user.is_riot_linked %}
+        {{ user.riot_id }} <span class="badge badge-status-open">✓ 連携済み</span>
+      {% else %}
+        <a class="btn btn-gold btn-sm" href="{% url 'riot_link' %}">Riot ID を連携する</a>
+      {% endif %}
     </dd>
-    <dt>ランク(ソロ)</dt><dd>{{ user.rank_solo|default:"—" }}</dd>
-    <dt>ランク(フレックス)</dt><dd>{{ user.rank_flex|default:"—" }}</dd>
+    <dt>ランク(ソロ)</dt><dd>{{ user.rank_solo|default:"アンランク" }}</dd>
+    <dt>ランク(フレックス)</dt><dd>{{ user.rank_flex|default:"アンランク" }}</dd>
+    {% if user.is_riot_linked %}
+    <dt>ランク取得</dt>
+    <dd>
+      {{ user.rank_fetched_at|date:"Y/m/d H:i"|default:"—" }}
+      <form method="post" action="{% url 'riot_refresh' %}" style="display:inline; margin-left:8px;">
+        {% csrf_token %}
+        <button class="btn btn-ghost btn-sm" type="submit" {% if not can_refresh %}disabled{% endif %}>更新</button>
+      </form>
+    </dd>
+    {% endif %}
     <dt>得意レーン</dt><dd>{{ user.lanes|join:" / "|default:"—" }}</dd>
     <dt>プレイ時間帯</dt><dd>{{ user.play_hours|default:"—" }}</dd>
     <dt>VC スタイル</dt><dd>{{ user.get_vc_style_display }}</dd>

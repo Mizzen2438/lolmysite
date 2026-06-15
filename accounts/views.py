@@ -3,10 +3,11 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
-from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from .forms import ProfileForm
+from .forms import ProfileForm, RiotLinkForm
+from .services import RiotLinkError, can_refresh, link_riot_account, refresh_rank
 
 
 def home(request):
@@ -55,8 +56,8 @@ def profile_setup(request):
             user = form.save(commit=False)
             user.profile_completed = True
             user.save()
-            messages.success(request, "プロフィールを保存しました。")
-            return redirect("mypage")
+            messages.success(request, "プロフィールを保存しました。次に Riot ID を連携しましょう。")
+            return redirect("riot_link")
     else:
         form = ProfileForm(instance=request.user)
     return render(request, "accounts/profile_form.html", {"form": form, "setup": True})
@@ -77,5 +78,40 @@ def profile_edit(request):
 
 
 @login_required
+def riot_link(request):
+    """Link a Riot ID and pull rank from the Riot API (F-ACC-03/06, F-UNIQ-03)."""
+    if request.method == "POST":
+        form = RiotLinkForm(request.POST)
+        if form.is_valid():
+            try:
+                link_riot_account(
+                    request.user,
+                    form.cleaned_data["game_name"],
+                    form.cleaned_data["tagline"],
+                )
+            except RiotLinkError as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, "Riot ID を連携し、ランクを取得しました。")
+                return redirect("mypage")
+    else:
+        form = RiotLinkForm()
+    return render(request, "accounts/riot_link.html", {"form": form})
+
+
+@login_required
+@require_POST
+def riot_refresh(request):
+    """Manually re-fetch the current user's rank (cooldown enforced)."""
+    try:
+        refresh_rank(request.user)
+    except RiotLinkError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "ランクを更新しました。")
+    return redirect("mypage")
+
+
+@login_required
 def mypage(request):
-    return render(request, "accounts/mypage.html", {"riot_link_url": reverse("profile_edit")})
+    return render(request, "accounts/mypage.html", {"can_refresh": can_refresh(request.user)})
