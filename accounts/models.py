@@ -60,6 +60,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     terms_agreed_at = models.DateTimeField(
         "規約同意日時", null=True, blank=True, help_text="F-SAFE-06"
     )
+    profile_completed = models.BooleanField(
+        "プロフィール設定済み", default=False,
+        help_text="初回オンボーディング完了フラグ",
+    )
 
     # --- Django flags ---
     is_staff = models.BooleanField("スタッフ権限", default=False)

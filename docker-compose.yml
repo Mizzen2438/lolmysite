@@ -23,6 +23,8 @@ services:
       DJANGO_SECRET_KEY: dev-insecure-secret-key-change-me
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
       DATABASE_URL: postgres://lolmysite:lolmysite@db:5432/lolmysite
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
     volumes:
       - .:/app
     ports:

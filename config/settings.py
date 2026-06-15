@@ -43,6 +43,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    # Third-party
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.discord",
     # Project apps
     "accounts",
     "games",
@@ -57,6 +63,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    # Forces logged-in users through terms + profile setup (F-SAFE-06).
+    "accounts.middleware.OnboardingMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -105,6 +114,52 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",  # admin (password) login
+    "allauth.account.auth_backends.AuthenticationBackend",  # Discord OAuth
+]
+
+SITE_ID = 1
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "post_login"
+LOGOUT_REDIRECT_URL = "home"
+
+# --- django-allauth -----------------------------------------------------
+
+# This is a social-only, passwordless service: users authenticate with
+# Discord and have no local username/email/password. discord_id is the
+# natural key, set in the adapter.
+SOCIALACCOUNT_ONLY = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USER_MODEL_EMAIL_FIELD = None
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_LOGIN_METHODS: set[str] = set()
+# Non-empty so allauth does not fall back to its username/password defaults;
+# the local signup form is never used under SOCIALACCOUNT_ONLY.
+ACCOUNT_SIGNUP_FIELDS: list[str] = ["email"]
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.DiscordSocialAccountAdapter"
+
+# account.W001 (login-method/signup-field cross-check) does not apply to a
+# social-only setup where the local account flow is disabled.
+SILENCED_SYSTEM_CHECKS = ["account.W001"]
+
+SOCIALACCOUNT_PROVIDERS = {
+    "discord": {
+        "SCOPE": ["identify"],
+        "APPS": [
+            {
+                "client_id": os.environ.get("DISCORD_CLIENT_ID", ""),
+                "secret": os.environ.get("DISCORD_CLIENT_SECRET", ""),
+                "key": "",
+            }
+        ],
+    }
+}
+
 # --- Internationalization ----------------------------------------------
 
 LANGUAGE_CODE = "ja"
@@ -116,11 +171,19 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Manifest (hashed filenames for cache-busting) requires collectstatic to have
+# built the manifest, so it is opt-in for production. Dev/test use plain
+# compressed storage, which needs no manifest.
+_staticfiles_backend = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if env_bool("DJANGO_MANIFEST_STATIC", False)
+    else "whitenoise.storage.CompressedStaticFilesStorage"
+)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+    "staticfiles": {"BACKEND": _staticfiles_backend},
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

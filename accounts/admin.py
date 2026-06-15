@@ -33,7 +33,7 @@ class UserAdmin(BaseUserAdmin):
         ("Riot", {"fields": ("riot_game_name", "riot_tagline", "riot_puuid")}),
         ("ランク(自動取得)", {"fields": ("rank_solo", "rank_flex", "rank_fetched_at")}),
         ("プロフィール", {"fields": ("lanes", "play_hours", "vc_style", "bio")}),
-        ("状態", {"fields": ("status", "terms_agreed_at", "is_active", "deleted_at")}),
+        ("状態", {"fields": ("status", "terms_agreed_at", "profile_completed", "is_active", "deleted_at")}),
         ("権限", {"fields": ("is_staff", "is_superuser", "groups", "user_permissions")}),
         ("日時", {"fields": ("last_login", "created_at")}),
     )

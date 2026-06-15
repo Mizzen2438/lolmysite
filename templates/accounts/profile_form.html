@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{% if setup %}プロフィール設定{% else %}プロフィール編集{% endif %} — LoL MySite{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 640px; margin: 32px auto;">
+  <h2>{% if setup %}プロフィール設定{% else %}プロフィール編集{% endif %}</h2>
+  {% if setup %}
+    <p style="color: var(--text-dim); font-size: 0.9rem;">
+      募集・応募の前にプロフィールを設定してください。Riot ID とランクの連携は次のステップで行います。
+    </p>
+  {% endif %}
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="form-row">
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="hint">{{ field.help_text }}</span>{% endif %}
+        {% for error in field.errors %}<span class="hint" style="color: var(--danger);">{{ error }}</span>{% endfor %}
+      </div>
+    {% endfor %}
+    <button class="btn btn-gold btn-block" type="submit">
+      {% if setup %}保存して次へ{% else %}更新する{% endif %}
+    </button>
+  </form>
+</div>
+{% endblock %}

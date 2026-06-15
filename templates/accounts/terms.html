@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}利用規約への同意 — LoL MySite{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 640px; margin: 32px auto;">
+  <h2>利用規約・コミュニティガイドライン</h2>
+  <p style="color: var(--text-dim); font-size: 0.9rem;">
+    ご利用の前に、以下に同意してください(F-SAFE-06)。
+  </p>
+  <ul style="font-size: 0.9rem; line-height: 1.9;">
+    <li>アカウントは 1 人 1 つです。サブ垢の作成・利用は禁止します。</li>
+    <li>実力を偽った低ランク帯への参加(スマーフ行為)は禁止します。</li>
+    <li>ランクは Riot API から自動取得され、自己申告はできません。</li>
+    <li>暴言・ハラスメント・無断キャンセルは禁止です。違反は警告・凍結の対象です。</li>
+    <li>13 歳以上の方のみご利用いただけます。</li>
+  </ul>
+  <form method="post">
+    {% csrf_token %}
+    <label class="check-group" style="margin: 12px 0;">
+      <input type="checkbox" name="agree" value="1"> 上記の利用規約・コミュニティガイドラインに同意します
+    </label>
+    <button class="btn btn-gold btn-block" type="submit">同意して続ける</button>
+  </form>
+</div>
+{% endblock %}

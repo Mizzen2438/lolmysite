@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1>一緒に遊ぶ仲間が、3分で見つかる。</h1>
+    <p>League of Legends のメンバー募集・応募の専門サービス。条件で探して、応募して、そのまま Discord に集合。</p>
+    {% if user.is_authenticated %}
+      <a class="btn btn-gold" href="{% url 'mypage' %}">マイページへ</a>
+    {% else %}
+      <a class="btn btn-discord" href="{% url 'login' %}">Discord でログイン</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

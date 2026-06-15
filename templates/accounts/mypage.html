@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}マイページ — LoL MySite{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="profile-head">
+    <span class="avatar">{{ user.discord_name|slice:":1"|upper }}</span>
+    <div>
+      <div class="name">{{ user.discord_name|default:"(名前未設定)" }}</div>
+      <div class="sub">Discord ID: {{ user.discord_id }}</div>
+    </div>
+    <span class="spacer" style="flex: 1;"></span>
+    <a class="btn btn-ghost btn-sm" href="{% url 'profile_edit' %}">編集</a>
+  </div>
+  <dl class="kv" style="margin-top: 16px;">
+    <dt>Riot ID</dt>
+    <dd>
+      {% if user.is_riot_linked %}{{ user.riot_id }}
+      {% else %}<span style="color: var(--text-dim);">未連携(次のマイルストーンで実装)</span>{% endif %}
+    </dd>
+    <dt>ランク(ソロ)</dt><dd>{{ user.rank_solo|default:"—" }}</dd>
+    <dt>ランク(フレックス)</dt><dd>{{ user.rank_flex|default:"—" }}</dd>
+    <dt>得意レーン</dt><dd>{{ user.lanes|join:" / "|default:"—" }}</dd>
+    <dt>プレイ時間帯</dt><dd>{{ user.play_hours|default:"—" }}</dd>
+    <dt>VC スタイル</dt><dd>{{ user.get_vc_style_display }}</dd>
+    <dt>自己紹介</dt><dd>{{ user.bio|default:"—"|linebreaksbr }}</dd>
+  </dl>
+</div>
+{% endblock %}
