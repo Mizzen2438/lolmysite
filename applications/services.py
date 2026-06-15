@@ -60,6 +60,11 @@ def apply(user, recruitment: Recruitment, desired_lane: str, comment: str = "") 
     if desired_lane not in open_lanes and "FILL" not in open_lanes:
         raise ApplicationError("選択したレーンの空き枠がありません。")
 
+    from recruitments.forms import contains_ng_word
+
+    if comment and contains_ng_word(comment):
+        raise ApplicationError("コメントに不適切な表現が含まれている可能性があります。")
+
     application, _ = Application.objects.update_or_create(
         recruitment=recruitment,
         applicant=user,

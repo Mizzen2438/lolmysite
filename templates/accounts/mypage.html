@@ -11,6 +11,7 @@
       <div class="sub">Discord ID: {{ user.discord_id }}</div>
     </div>
     <span class="spacer" style="flex: 1;"></span>
+    <a class="btn btn-ghost btn-sm" href="{% url 'blocked_list' %}">ブロック管理</a>
     <a class="btn btn-ghost btn-sm" href="{% url 'profile_edit' %}">編集</a>
   </div>
   <dl class="kv" style="margin-top: 16px;">

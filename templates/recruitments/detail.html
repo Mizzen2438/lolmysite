@@ -5,6 +5,12 @@
 {% block content %}
 <p style="margin-top:14px;"><a href="{% url 'recruitment_list' %}">← 募集一覧に戻る</a></p>
 
+{% if recruitment.is_hidden %}
+  <div class="proto-note" style="color:var(--danger); border-color:var(--danger);">
+    この募集は運営により非公開化されています(一般ユーザーには表示されません)。
+  </div>
+{% endif %}
+
 <div class="detail-head">
   <span class="badge badge-mode">{{ recruitment.mode }}</span>
   {% if recruitment.status == 'open' %}<span class="badge badge-status-open">募集中</span>
@@ -120,7 +126,6 @@
 
 {% elif viewer_application and viewer_application.status == 'rejected' %}
   <div class="panel"><p class="empty">この募集への応募は見送られました。</p></div>
-
 {% elif recruitment.status == 'open' %}
   {% if user.is_authenticated %}
     {% if apply_error %}
@@ -149,5 +154,23 @@
   {% else %}
     <div class="panel"><p class="empty"><a href="{% url 'login' %}">ログイン</a>すると応募できます。</p></div>
   {% endif %}
+{% endif %}
+
+{% if user.is_authenticated and not is_owner %}
+  <div style="text-align:center; margin:20px 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+    <a class="btn btn-ghost btn-sm" href="{% url 'report_create' 'recruitment' recruitment.pk %}">⚠ この募集を通報</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'report_create' 'user' recruitment.owner_id %}">⚠ 募集主を通報</a>
+    {% if viewer_blocked_owner %}
+      <form method="post" action="{% url 'unblock_user' recruitment.owner_id %}" style="margin:0;">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-ghost btn-sm" type="submit">ブロック解除</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'block_user' recruitment.owner_id %}" style="margin:0;">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-ghost btn-sm" type="submit">募集主をブロック</button>
+      </form>
+    {% endif %}
+  </div>
 {% endif %}
 {% endblock %}

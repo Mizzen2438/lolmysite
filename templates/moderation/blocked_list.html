@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}ブロック中のユーザー — LoL MySite{% endblock %}
+
+{% block content %}
+<h1 style="font-size:1.3rem; margin-top:18px;">ブロック中のユーザー</h1>
+<div class="panel">
+  {% for block in blocks %}
+    <div class="member-row">
+      <span class="avatar">{{ block.blocked_user.discord_name|slice:":1"|upper }}</span>
+      <div><div class="name">{{ block.blocked_user }}</div></div>
+      <span class="spacer"></span>
+      <form method="post" action="{% url 'unblock_user' block.blocked_user_id %}" style="margin:0;">
+        {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">解除</button>
+      </form>
+    </div>
+  {% empty %}
+    <p class="empty">ブロック中のユーザーはいません。</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -44,6 +44,8 @@ class Recruitment(models.Model):
     status = models.CharField(
         "状態", max_length=16, choices=Status.choices, default=Status.OPEN
     )
+    # Hidden by moderation (F-SAFE-07); excluded from public listing/detail.
+    is_hidden = models.BooleanField("運営により非公開", default=False)
     created_at = models.DateTimeField("作成日時", auto_now_add=True)
     updated_at = models.DateTimeField("更新日時", auto_now=True)
 

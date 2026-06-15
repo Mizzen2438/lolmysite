@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -20,6 +21,7 @@ def recruitment_list(request):
     # Defer the invite URL so it never reaches the list (F-DSC-02, N-06).
     qs = (
         Recruitment.objects.defer("discord_invite_url")
+        .filter(is_hidden=False)
         .select_related("owner", "game")
         .prefetch_related("slots")
     )
@@ -47,6 +49,18 @@ def recruitment_list(request):
             Q(rank_max_idx__gte=idx) | Q(rank_max_idx__isnull=True),
         )
 
+    # F-SAFE-02: hide recruitments from users in a block relationship.
+    if request.user.is_authenticated:
+        from moderation.models import Block
+
+        blocked_ids = set(
+            Block.objects.filter(user=request.user).values_list("blocked_user_id", flat=True)
+        ) | set(
+            Block.objects.filter(blocked_user=request.user).values_list("user_id", flat=True)
+        )
+        if blocked_ids:
+            qs = qs.exclude(owner_id__in=blocked_ids)
+
     context = {
         "recruitments": qs,
         "modes": game.modes if game else [],
@@ -67,6 +81,9 @@ def recruitment_detail(request, pk):
         pk=pk,
     )
     is_owner = recruitment.is_owner(request.user)
+    # Hidden recruitments are visible only to the owner and staff (F-SAFE-07).
+    if recruitment.is_hidden and not is_owner and not request.user.is_staff:
+        raise Http404("この募集は公開されていません。")
 
     viewer_application = None
     apply_error = None
@@ -84,6 +101,14 @@ def recruitment_detail(request, pk):
             .select_related("applicant")
         )
 
+    viewer_blocked_owner = False
+    if request.user.is_authenticated and not is_owner:
+        from moderation.models import Block
+
+        viewer_blocked_owner = Block.objects.filter(
+            user=request.user, blocked_user=recruitment.owner
+        ).exists()
+
     return render(
         request,
         "recruitments/detail.html",
@@ -95,6 +120,7 @@ def recruitment_detail(request, pk):
             "viewer_application": viewer_application,
             "apply_error": apply_error,
             "pending_applications": pending_applications,
+            "viewer_blocked_owner": viewer_blocked_owner,
         },
     )
 
