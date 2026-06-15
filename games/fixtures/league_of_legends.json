@@ -1,0 +1,32 @@
+[
+  {
+    "model": "games.game",
+    "pk": 1,
+    "fields": {
+      "name": "League of Legends",
+      "slug": "league-of-legends",
+      "modes": [
+        "ランク(フレックス)",
+        "ランク(デュオ)",
+        "ノーマル(ドラフト)",
+        "ARAM",
+        "カスタム"
+      ],
+      "lanes": ["TOP", "JG", "MID", "ADC", "SUP", "FILL"],
+      "rank_tiers": [
+        "アイアン",
+        "ブロンズ",
+        "シルバー",
+        "ゴールド",
+        "プラチナ",
+        "エメラルド",
+        "ダイヤモンド",
+        "マスター",
+        "グランドマスター",
+        "チャレンジャー"
+      ],
+      "is_active": true,
+      "created_at": "2026-06-15T00:00:00Z"
+    }
+  }
+]
