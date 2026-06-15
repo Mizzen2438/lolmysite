@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}募集一覧 — LoL MySite{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; gap:12px; margin-top:18px;">
+  <h1 style="flex:1; font-size:1.3rem;">募集一覧</h1>
+  {% if user.is_authenticated %}
+    <a class="btn btn-gold btn-sm" href="{% url 'recruitment_create' %}">募集を作成</a>
+  {% endif %}
+</div>
+
+<form method="get" class="filter-bar">
+  <div class="field">
+    <label for="f-mode">ゲームモード</label>
+    <select id="f-mode" name="mode">
+      <option value="">すべて</option>
+      {% for m in modes %}<option value="{{ m }}" {% if selected.mode == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-rank">ランク帯</label>
+    <select id="f-rank" name="rank">
+      <option value="">すべて</option>
+      {% for i, t in tiers %}<option value="{{ i }}" {% if selected.rank == i|stringformat:'s' %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-lane">空きレーン</label>
+    <select id="f-lane" name="lane">
+      <option value="">すべて</option>
+      {% for lane in lanes %}<option value="{{ lane }}" {% if selected.lane == lane %}selected{% endif %}>{{ lane }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-tag">タグ</label>
+    <select id="f-tag" name="tag">
+      <option value="">すべて</option>
+      {% for value, label in tags %}<option value="{{ value }}" {% if selected.tag == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label>状態</label>
+    <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; color:var(--text);">
+      <input type="checkbox" name="open" value="1" {% if selected.open %}checked{% endif %}> 募集中のみ
+    </label>
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">絞り込む</button>
+</form>
+
+<ul class="card-list">
+  {% for r in recruitments %}
+    <li>
+      <a class="recruit-card" href="{% url 'recruitment_detail' r.pk %}">
+        <div class="head">
+          <span class="badge badge-mode">{{ r.mode }}</span>
+          <span class="badge badge-rank">{{ r.rank_range_display }}</span>
+          {% if r.status == 'open' %}<span class="badge badge-status-open">募集中</span>
+          {% elif r.status == 'filled' %}<span class="badge badge-status-filled">成立</span>
+          {% else %}<span class="badge badge-status-closed">{{ r.get_status_display }}</span>{% endif %}
+          <span class="title">{{ r.comment|truncatechars:40|default:"(コメントなし)" }}</span>
+        </div>
+        <div class="slot-list">
+          {% for slot in r.slots.all %}
+            {% if slot.member_id %}<span class="slot filled">{{ slot.lane }} ✓</span>
+            {% else %}<span class="slot wanted">{{ slot.lane }} 募集中</span>{% endif %}
+          {% endfor %}
+        </div>
+        <div class="meta">
+          <span>🕘 {{ r.start_at|date:"n/j H:i" }}{% if r.duration_label %}({{ r.duration_label }}){% endif %}</span>
+          {% if r.vc_tool %}<span>🎧 {{ r.vc_tool }}</span>{% endif %}
+          <span>👤 {{ r.owner }}</span>
+        </div>
+        <div>{% for t in r.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</div>
+      </a>
+    </li>
+  {% empty %}
+    <li class="empty">条件に合う募集が見つかりませんでした。</li>
+  {% endfor %}
+</ul>
+{% endblock %}

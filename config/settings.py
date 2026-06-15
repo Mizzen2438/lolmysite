@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     # Project apps
     "accounts",
     "games",
+    "recruitments",
 ]
 
 MIDDLEWARE = [
@@ -230,3 +231,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 # F-UNIQ-07: minimum Discord account age (in days) required to register.
 MIN_DISCORD_ACCOUNT_AGE_DAYS = int(os.environ.get("MIN_DISCORD_ACCOUNT_AGE_DAYS", "90"))
+
+# F-SAFE-08: simple NG-word filter for recruitment text. Comma-separated env override.
+NG_WORDS = [
+    w.strip()
+    for w in os.environ.get("NG_WORDS", "死ね,殺す").split(",")
+    if w.strip()
+]

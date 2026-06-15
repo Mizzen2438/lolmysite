@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}募集詳細 — LoL MySite{% endblock %}
+
+{% block content %}
+<p style="margin-top:14px;"><a href="{% url 'recruitment_list' %}">← 募集一覧に戻る</a></p>
+
+<div class="detail-head">
+  <span class="badge badge-mode">{{ recruitment.mode }}</span>
+  {% if recruitment.status == 'open' %}<span class="badge badge-status-open">募集中</span>
+  {% elif recruitment.status == 'filled' %}<span class="badge badge-status-filled">成立</span>
+  {% else %}<span class="badge badge-status-closed">{{ recruitment.get_status_display }}</span>{% endif %}
+  <h1>{{ recruitment.comment|default:"(コメントなし)" }}</h1>
+</div>
+<div>{% for t in recruitment.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</div>
+
+<div class="panel">
+  <h2>募集条件</h2>
+  <dl class="kv">
+    <dt>対象ランク帯</dt><dd>{{ recruitment.rank_range_display }}</dd>
+    <dt>開始予定</dt><dd>{{ recruitment.start_at|date:"Y/n/j (D) H:i" }}</dd>
+    <dt>想定プレイ時間</dt><dd>{{ recruitment.duration_label|default:"—" }}</dd>
+    <dt>ボイスチャット</dt><dd>{{ recruitment.vc_tool|default:"—" }}</dd>
+    <dt>募集主</dt><dd>{{ recruitment.owner }}{% if recruitment.owner.rank_solo %}({{ recruitment.owner.rank_solo }}){% endif %}</dd>
+  </dl>
+</div>
+
+<div class="panel">
+  <h2>参加メンバー({{ recruitment.filled_count }}/{{ recruitment.total_slots }})</h2>
+  {% for slot in recruitment.slots.all %}
+    <div class="member-row">
+      {% if slot.member_id %}
+        <span class="avatar">{{ slot.member.discord_name|slice:":1"|upper }}</span>
+        <div>
+          <div class="name">{{ slot.member }}</div>
+          <div class="sub">{% if slot.member.rank_solo %}{{ slot.member.rank_solo }}{% endif %}</div>
+        </div>
+        <span class="spacer"></span>
+        <span class="slot filled">{{ slot.lane }}</span>
+      {% else %}
+        <span class="avatar">?</span>
+        <div><div class="name" style="color:var(--text-dim);">募集中</div></div>
+        <span class="spacer"></span>
+        <span class="slot wanted">{{ slot.lane }}</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% if can_view_invite %}
+  <div class="discord-box">
+    <h2>🎉 Discord 集合案内</h2>
+    <p style="font-size:0.88rem;">開始時刻までに VC へ集合してください。</p>
+    <a class="btn btn-discord" href="{{ recruitment.discord_invite_url }}" target="_blank" rel="noopener">Discord サーバーに参加する</a>
+  </div>
+{% elif recruitment.discord_invite_url %}
+  <div class="discord-box">
+    <h2>🔒 Discord 集合案内</h2>
+    <p class="locked-note">招待リンクは参加が承認されたメンバーにのみ表示されます。</p>
+  </div>
+{% endif %}
+
+{% if is_owner %}
+  <div class="panel">
+    <h2>募集の管理</h2>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn btn-ghost btn-sm" href="{% url 'recruitment_edit' recruitment.pk %}">編集</a>
+      {% if recruitment.status == 'open' %}
+        <form method="post" action="{% url 'recruitment_close' recruitment.pk %}" style="margin:0;">
+          {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">募集を締め切る</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'recruitment_delete' recruitment.pk %}" style="margin:0;"
+            onsubmit="return confirm('この募集を削除しますか?');">
+        {% csrf_token %}<button class="btn btn-danger btn-sm" type="submit">削除</button>
+      </form>
+    </div>
+  </div>
+{% elif recruitment.status == 'open' %}
+  <div class="panel">
+    <p class="empty">応募機能は次のアップデートで提供予定です。</p>
+  </div>
+{% endif %}
+{% endblock %}

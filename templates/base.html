@@ -12,7 +12,9 @@
     <div class="inner">
       <span class="logo"><a href="{% url 'home' %}">LoL MySite</a></span>
       <nav class="nav">
+        <a href="{% url 'recruitment_list' %}">募集一覧</a>
         {% if user.is_authenticated %}
+          <a href="{% url 'recruitment_create' %}">募集を作成</a>
           <a href="{% url 'mypage' %}">マイページ</a>
         {% endif %}
       </nav>
