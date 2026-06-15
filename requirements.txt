@@ -11,3 +11,6 @@ PyJWT>=2.0
 cryptography>=42.0
 # Riot API client (M3)
 httpx>=0.27
+# Cache (production) & error monitoring (M7)
+redis>=5.0
+sentry-sdk[django]>=2.0

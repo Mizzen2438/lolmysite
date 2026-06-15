@@ -18,7 +18,9 @@ League of Legends のメンバー募集・応募の専門サービス。
 | M4 | 募集 CRUD・一覧フィルタ・自動期限切れ | ✅ 完了 |
 | M5 | 応募・承認・成立・Discord 集合案内・サイト内通知 | ✅ 完了 |
 | M6 | 通報・ブロック・運営フロー(Admin) | ✅ 完了 |
-| M7 | 本番デプロイ・Sentry・Production API Key | 未着手 |
+| M7 | 本番デプロイ設定・Sentry・cron | ✅ 完了 |
+
+MVP(フェーズ 1)の全マイルストーン M1〜M7 が完了。本番デプロイ手順は [DEPLOYMENT.md](./DEPLOYMENT.md) を参照。
 
 ## Discord OAuth の設定(M2)
 
@@ -72,6 +74,14 @@ League of Legends のメンバー募集・応募の専門サービス。
   - ユーザーの警告・凍結・凍結解除(凍結は `SanctionRecord` を Discord ID 単位で記録し、再登録を拒否 = F-UNIQ-04)。
   - 募集の非公開化/公開(非公開の募集は一覧・詳細から隠れる)。
 - 募集コメント・応募コメントに NG ワードフィルタを適用(F-SAFE-08)。
+
+## 本番デプロイ(M7)
+
+- Render Blueprint(`render.yaml`): Web + PostgreSQL + Redis + cron 2 本を定義。
+- `Procfile`(release で migrate)・`runtime.txt`(Python 3.12)で Heroku 系にも対応。
+- 本番は `DEBUG=False` で HTTPS 強制・HSTS・セキュアクッキー(N-05)、静的ファイルは WhiteNoise の manifest ストレージ。
+- Sentry でエラー監視(`SENTRY_DSN` = N-12)。`python manage.py check --deploy` がクリーン。
+- 手順とチェックリストは [DEPLOYMENT.md](./DEPLOYMENT.md)。Riot は Production API Key を申請する(N-14)。
 
 ## ローカル開発(SQLite クイックスタート)
 

@@ -242,3 +242,16 @@ NG_WORDS = [
     for w in os.environ.get("NG_WORDS", "死ね,殺す").split(",")
     if w.strip()
 ]
+
+# --- Error monitoring (M7, N-12) ---------------------------------------
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+    )
