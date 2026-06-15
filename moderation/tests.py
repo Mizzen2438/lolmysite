@@ -99,6 +99,21 @@ class BlockTests(TestCase):
         resp = self.client.get(reverse("recruitment_list"))
         self.assertNotIn(self.rec.pk, {r.pk for r in resp.context["recruitments"]})
 
+    def test_block_ignores_external_next_redirect(self):
+        self.client.force_login(self.viewer, backend=BACKEND)
+        resp = self.client.post(
+            reverse("block_user", args=[self.owner.pk]), {"next": "https://evil.example/"}
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn("evil.example", resp["Location"])
+
+    def test_block_honors_safe_next_redirect(self):
+        self.client.force_login(self.viewer, backend=BACKEND)
+        resp = self.client.post(
+            reverse("block_user", args=[self.owner.pk]), {"next": "/recruitments/"}
+        )
+        self.assertEqual(resp["Location"], "/recruitments/")
+
 
 class HiddenRecruitmentTests(TestCase):
     def setUp(self):

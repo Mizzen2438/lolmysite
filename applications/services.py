@@ -8,6 +8,7 @@ auto-fills the recruitment and sends the Discord meetup notice (F-DSC-03).
 from __future__ import annotations
 
 from django.db import transaction
+from django.utils import timezone
 
 from moderation.models import Block
 from notifications.models import Notification, notify
@@ -27,6 +28,8 @@ def check_can_apply(user, recruitment: Recruitment) -> None:
     if not user.is_riot_linked:
         raise ApplicationError("応募には Riot ID の連携が必要です。")
     if recruitment.status != Recruitment.Status.OPEN:
+        raise ApplicationError("この募集は応募を受け付けていません。")
+    if recruitment.is_hidden:
         raise ApplicationError("この募集は応募を受け付けていません。")
     if recruitment.owner_id == user.pk:
         raise ApplicationError("自分の募集には応募できません。")
@@ -149,7 +152,11 @@ def decline(application: Application) -> Application:
     application.status = Application.Status.DECLINED
     application.save(update_fields=["status", "updated_at"])
     if recruitment.status == Recruitment.Status.FILLED:
-        recruitment.status = Recruitment.Status.OPEN
+        # Reopen for re-recruiting, unless the start time has already passed.
+        if recruitment.start_at < timezone.now():
+            recruitment.status = Recruitment.Status.EXPIRED
+        else:
+            recruitment.status = Recruitment.Status.OPEN
         recruitment.save(update_fields=["status"])
     notify(
         recruitment.owner,

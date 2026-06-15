@@ -70,14 +70,15 @@ class Recruitment(models.Model):
 
     @property
     def total_slots(self) -> int:
-        return self.slots.count()
+        # Use the (prefetched) related manager to avoid an extra query per row.
+        return len(self.slots.all())
 
     @property
     def filled_count(self) -> int:
-        return self.slots.filter(member__isnull=False).count()
+        return sum(1 for slot in self.slots.all() if slot.member_id)
 
     def open_lanes(self) -> list[str]:
-        return list(self.slots.filter(member__isnull=True).values_list("lane", flat=True))
+        return [slot.lane for slot in self.slots.all() if slot.member_id is None]
 
     @property
     def is_open(self) -> bool:

@@ -77,6 +77,13 @@ class EligibilityTests(TestCase):
         with self.assertRaises(services.ApplicationError):
             services.check_can_apply(applicant, self.rec)
 
+    def test_hidden_recruitment_rejects(self):
+        applicant = make_user("hid")
+        self.rec.is_hidden = True
+        self.rec.save()
+        with self.assertRaises(services.ApplicationError):
+            services.check_can_apply(applicant, self.rec)
+
     def test_duplicate_active_application_rejected(self):
         applicant = make_user("dup")
         services.apply(applicant, self.rec, "MID")
@@ -157,6 +164,18 @@ class ApplyApproveFlowTests(TestCase):
         self.assertEqual(app.status, Application.Status.DECLINED)
         self.assertEqual(rec.status, Recruitment.Status.OPEN)
         self.assertFalse(rec.slots.filter(member=self.applicant).exists())
+
+    def test_decline_after_start_expires_recruitment(self):
+        rec = make_recruitment(self.owner, self.game, open_lanes=("MID",))
+        app = services.apply(self.applicant, rec, "MID")
+        services.approve(app)
+        # Start time slips into the past while the match is filled.
+        Recruitment.objects.filter(pk=rec.pk).update(
+            start_at=timezone.now() - timedelta(minutes=1)
+        )
+        services.decline(app)
+        rec.refresh_from_db()
+        self.assertEqual(rec.status, Recruitment.Status.EXPIRED)
 
     def test_reapply_after_withdraw(self):
         rec = make_recruitment(self.owner, self.game)

@@ -49,15 +49,16 @@ def recruitment_list(request):
             Q(rank_max_idx__gte=idx) | Q(rank_max_idx__isnull=True),
         )
 
-    # F-SAFE-02: hide recruitments from users in a block relationship.
+    # F-SAFE-02: hide recruitments from users in a block relationship (either
+    # direction), resolved in a single query.
     if request.user.is_authenticated:
         from moderation.models import Block
 
-        blocked_ids = set(
-            Block.objects.filter(user=request.user).values_list("blocked_user_id", flat=True)
-        ) | set(
-            Block.objects.filter(blocked_user=request.user).values_list("user_id", flat=True)
-        )
+        blocked_ids = set()
+        for user_id, blocked_id in Block.objects.filter(
+            Q(user=request.user) | Q(blocked_user=request.user)
+        ).values_list("user_id", "blocked_user_id"):
+            blocked_ids.add(blocked_id if user_id == request.user.pk else user_id)
         if blocked_ids:
             qs = qs.exclude(owner_id__in=blocked_ids)
 

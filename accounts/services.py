@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.utils import timezone
 
 from . import riot
@@ -42,16 +43,20 @@ def link_riot_account(user: User, game_name: str, tagline: str) -> User:
     user.riot_game_name = account.get("gameName", game_name)
     user.riot_tagline = account.get("tagLine", tagline)
     _apply_ranks(user)
-    user.save(
-        update_fields=[
-            "riot_puuid",
-            "riot_game_name",
-            "riot_tagline",
-            "rank_solo",
-            "rank_flex",
-            "rank_fetched_at",
-        ]
-    )
+    try:
+        user.save(
+            update_fields=[
+                "riot_puuid",
+                "riot_game_name",
+                "riot_tagline",
+                "rank_solo",
+                "rank_flex",
+                "rank_fetched_at",
+            ]
+        )
+    except IntegrityError as exc:
+        # Lost a race: another user linked this PUUID between the check and save.
+        raise RiotLinkError("この Riot アカウントは既に別のユーザーに登録されています。") from exc
     return user
 
 

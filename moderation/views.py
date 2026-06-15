@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from recruitments.models import Recruitment
@@ -12,6 +13,16 @@ from .forms import ReportForm
 from .models import Block, Report
 
 User = get_user_model()
+
+
+def _safe_next(request, fallback):
+    """Return the POSTed ``next`` only if it is a safe same-host path."""
+    nxt = request.POST.get("next")
+    if nxt and url_has_allowed_host_and_scheme(
+        nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return nxt
+    return fallback
 
 
 @login_required
@@ -62,7 +73,7 @@ def block_user(request, user_id):
         return redirect("mypage")
     Block.objects.get_or_create(user=request.user, blocked_user=target)
     messages.success(request, f"{target} さんをブロックしました。")
-    return redirect(request.POST.get("next") or "mypage")
+    return redirect(_safe_next(request, "mypage"))
 
 
 @login_required
@@ -70,7 +81,7 @@ def block_user(request, user_id):
 def unblock_user(request, user_id):
     Block.objects.filter(user=request.user, blocked_user_id=user_id).delete()
     messages.success(request, "ブロックを解除しました。")
-    return redirect(request.POST.get("next") or "blocked_list")
+    return redirect(_safe_next(request, "blocked_list"))
 
 
 @login_required
