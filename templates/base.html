@@ -40,7 +40,17 @@
   </main>
 
   <footer class="site-footer">
-    <div>LoL MySite</div>
+    <div class="links">
+      <a href="{% url 'legal_terms' %}">利用規約</a>
+      <a href="{% url 'legal_privacy' %}">プライバシーポリシー</a>
+    </div>
+    <div style="margin-top:8px; font-size:0.72rem; line-height:1.6;">
+      LoL MySite isn't endorsed by Riot Games and doesn't reflect the views or
+      opinions of Riot Games or anyone officially involved in producing or
+      managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </div>
+    <div style="margin-top:4px;">© LoL MySite</div>
   </footer>
 </body>
 </html>

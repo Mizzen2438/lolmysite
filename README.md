@@ -52,7 +52,8 @@ Discord 集合案内まで確認できる。
 
 ## Riot 連携(M3)
 
-- `RIOT_API_KEY` を `.env` に設定(開発は Development Key、本番は Production Key を申請 = N-14)。
+- `RIOT_API_KEY` を `.env` に設定(開発は Development Key、本番は Production Key を申請 = N-14)。申請準備は [docs/RIOT_API_APPLICATION.md](./docs/RIOT_API_APPLICATION.md)。
+- 公開の利用規約 `/terms/`・プライバシーポリシー `/privacy/`、および Riot 法的免責表記(全ページフッター)を用意済み(Riot 審査の前提)。
 - ランクは Riot API から自動取得され、自己申告はできない(F-ACC-06)。ソロ/フレックスをマイページに表示。
 - 応答は Django キャッシュ(本番は Redis = `CACHE_URL`)に既定 24h 保存(N-13)。手動更新は既定 10 分のクールダウン付き。
 - 定期更新は管理コマンドで実行する(F-ACC-08):

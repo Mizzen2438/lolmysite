@@ -35,6 +35,8 @@ class OnboardingMiddleware:
             "/admin/",
             "/static/",
             "/healthz",
+            reverse("legal_terms"),
+            reverse("legal_privacy"),
         )
         if request.path.startswith(exempt_prefixes):
             return None
