@@ -2,7 +2,7 @@
 # Secrets marked `sync: false` must be filled in the Render dashboard.
 
 envVarGroups:
-  - name: lolmysite-shared
+  - name: neonq-shared
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
@@ -26,20 +26,20 @@ envVarGroups:
         sync: false
 
 databases:
-  - name: lolmysite-db
-    databaseName: lolmysite
-    user: lolmysite
+  - name: neonq-db
+    databaseName: neonq
+    user: neonq
     plan: free
 
 services:
   - type: redis
-    name: lolmysite-redis
+    name: neonq-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []  # internal only
 
   - type: web
-    name: lolmysite
+    name: neonq
     runtime: python
     plan: free
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
@@ -47,57 +47,57 @@ services:
     startCommand: "gunicorn config.wsgi:application"
     healthCheckPath: /healthz
     envVars:
-      - fromGroup: lolmysite-shared
+      - fromGroup: neonq-shared
       - key: DJANGO_ALLOWED_HOSTS
-        sync: false  # e.g. lolmysite.onrender.com
+        sync: false  # e.g. neonq.onrender.com
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
-        sync: false  # e.g. https://lolmysite.onrender.com
+        sync: false  # e.g. https://neonq.onrender.com
       - key: DATABASE_URL
         fromDatabase:
-          name: lolmysite-db
+          name: neonq-db
           property: connectionString
       - key: CACHE_URL
         fromService:
           type: redis
-          name: lolmysite-redis
+          name: neonq-redis
           property: connectionString
 
   # F-REC-05: expire recruitments past their start time, every minute.
   - type: cron
-    name: lolmysite-expire-recruitments
+    name: neonq-expire-recruitments
     runtime: python
     plan: free
     schedule: "* * * * *"
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python manage.py expire_recruitments"
     envVars:
-      - fromGroup: lolmysite-shared
+      - fromGroup: neonq-shared
       - key: DATABASE_URL
         fromDatabase:
-          name: lolmysite-db
+          name: neonq-db
           property: connectionString
       - key: CACHE_URL
         fromService:
           type: redis
-          name: lolmysite-redis
+          name: neonq-redis
           property: connectionString
 
   # F-ACC-08: refresh active users' ranks daily (03:00 JST = 18:00 UTC).
   - type: cron
-    name: lolmysite-refresh-ranks
+    name: neonq-refresh-ranks
     runtime: python
     plan: free
     schedule: "0 18 * * *"
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python manage.py refresh_ranks"
     envVars:
-      - fromGroup: lolmysite-shared
+      - fromGroup: neonq-shared
       - key: DATABASE_URL
         fromDatabase:
-          name: lolmysite-db
+          name: neonq-db
           property: connectionString
       - key: CACHE_URL
         fromService:
           type: redis
-          name: lolmysite-redis
+          name: neonq-redis
           property: connectionString

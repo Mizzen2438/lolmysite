@@ -30,7 +30,7 @@ Riot Developer Portal でアプリ(Product)を登録し、Production API Key を
 
 **Product Name**
 ```
-LoL MySite
+NEONQ
 ```
 
 **Product URL** ※公開済みの本番 URL
@@ -55,7 +55,7 @@ https://<your-domain>/terms/
 
 **Product Description**
 ```
-LoL MySite is a free web service for Japanese League of Legends players to find
+NEONQ is a free web service for Japanese League of Legends players to find
 teammates for ranked, normal, and ARAM games. Players sign in with Discord,
 link their Riot ID, and create or apply to "recruitment" posts that specify
 game mode, lanes, target rank range, start time, and voice-chat preference.
@@ -107,7 +107,7 @@ within the default development limits during launch (low thousands of calls/day)
 
 ## 3. 申請後の設定
 
-1. 取得した Production API Key を本番環境変数 `RIOT_API_KEY` に設定(Render では `lolmysite-shared` グループ)。
+1. 取得した Production API Key を本番環境変数 `RIOT_API_KEY` に設定(Render では `neonq-shared` グループ)。
 2. `RIOT_PLATFORM=jp1` / `RIOT_REGIONAL=asia` を確認。
 3. マイページの「更新」ボタンと日次 cron(`refresh_ranks`)でランク取得が成功することを確認。
 

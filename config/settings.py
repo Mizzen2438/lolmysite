@@ -1,5 +1,5 @@
 """
-Django settings for the LoL MySite project (milestone M1).
+Django settings for the NEONQ project (milestone M1).
 
 Configuration is driven by environment variables so the same code runs in
 local development (SQLite), Docker Compose (PostgreSQL) and production.

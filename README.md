@@ -1,4 +1,4 @@
-# LoL MySite
+# NEONQ
 
 League of Legends のメンバー募集・応募の専門サービス。
 
