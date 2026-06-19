@@ -1,0 +1,82 @@
+name: Scheduled jobs
+
+# 無料枠の Render には cron が無いため(render.yaml 参照)、定期実行は GitHub Actions で
+# 代替する。GitHub ホストランナーから本番 DB(Supabase)へ直接つなぎ、管理コマンドを実行する。
+#   - expire_recruitments: 開始時刻を過ぎた募集を期限切れにする(F-REC-05)。
+#   - refresh_ranks:       アクティブユーザーのランクを日次で再取得(F-ACC-08)。
+#
+# 必要な接続情報はリポジトリ Secrets に設定する(Settings → Secrets and variables → Actions):
+#   DJANGO_SECRET_KEY, DATABASE_URL, CACHE_URL, RIOT_API_KEY
+#   (任意) RIOT_PLATFORM, RIOT_REGIONAL — 未設定なら jp1 / asia を既定で使う。
+
+on:
+  schedule:
+    # 注: GitHub の cron は最短 5 分間隔で、混雑時は数分遅延しうる(分単位の厳密さは保証されない)。
+    #     募集の期限切れは表示側でも考慮しているため、15 分粒度で十分(DEPLOYMENT.md 参照)。
+    - cron: "*/15 * * * *"   # expire_recruitments(15 分毎)
+    - cron: "0 18 * * *"     # refresh_ranks(03:00 JST = 18:00 UTC)
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "手動実行するジョブ"
+        type: choice
+        default: both
+        options:
+          - both
+          - expire
+          - refresh
+
+permissions:
+  contents: read
+
+env:
+  DJANGO_DEBUG: "False"
+  DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  CACHE_URL: ${{ secrets.CACHE_URL }}
+  RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+  RIOT_PLATFORM: ${{ secrets.RIOT_PLATFORM || 'jp1' }}
+  RIOT_REGIONAL: ${{ secrets.RIOT_REGIONAL || 'asia' }}
+
+jobs:
+  expire-recruitments:
+    # */15 のスケジュール、または手動実行(both/expire)で動く。
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'both' || github.event.inputs.job == 'expire'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 前回がまだ動いていれば待つ(多重起動防止)。
+    concurrency:
+      group: expire-recruitments
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py expire_recruitments
+
+  refresh-ranks:
+    # 日次のスケジュール、または手動実行(both/refresh)で動く。
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 18 * * *') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'both' || github.event.inputs.job == 'refresh'))
+    runs-on: ubuntu-latest
+    # Riot API のレート制限に配慮し逐次・待機しながら回すため、長めに確保する。
+    timeout-minutes: 60
+    concurrency:
+      group: refresh-ranks
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py refresh_ranks

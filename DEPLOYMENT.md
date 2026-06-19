@@ -5,9 +5,12 @@
 ```
 ユーザー → Cloudflare(DNS / SSL / CDN / WAF・無料)
                  ↓
-        Render(Django Web + cron 2 本)
+        Render(Django Web)
             ├─ Supabase(PostgreSQL・東京)
             └─ Upstash(Redis・キャッシュ)
+
+定期実行(expire_recruitments / refresh_ranks)は GitHub Actions
+(.github/workflows/scheduled.yml)で代替する。
 ```
 
 ドメイン: `neonq.online`(apex)と `www.neonq.online` の両方を使う。
@@ -52,8 +55,12 @@
 
 > **定期実行(cron)について**: Render の cron は無料枠が無いため、`render.yaml` には含めていない。
 > `expire_recruitments`(募集の自動期限切れ)と `refresh_ranks`(ランク日次更新)は、
-> GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`、別 PR で追加)で
-> 無料代替する。ローンチ初期は無くても致命的ではない(ランクは連携時/手動更新で取得、
+> GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`)で無料代替する。
+> 同ワークフローは本番 DB に直接つなぐため、リポジトリ Secrets(Settings → Secrets and
+> variables → Actions)に `DJANGO_SECRET_KEY` / `DATABASE_URL` / `CACHE_URL` /
+> `RIOT_API_KEY`(任意で `RIOT_PLATFORM` / `RIOT_REGIONAL`)を設定する。手動実行は
+> Actions タブの **Scheduled jobs → Run workflow** から(`expire` / `refresh` / `both`)。
+> ローンチ初期はスケジュールが無くても致命的ではない(ランクは連携時/手動更新で取得、
 > 期限切れは表示側でも考慮)。
 
 ## 5. Cloudflare + 独自ドメイン(neonq.online / www)
@@ -88,7 +95,7 @@ python manage.py createsuperuser               # 運営アカウント(Discord I
 - [ ] Riot 連携でランクが自動取得・表示される
 - [ ] 募集作成 → 別ユーザーで応募 → 承認 → 成立 → 集合案内通知 → 招待リンク表示
 - [ ] `/admin/` で通報確認・凍結・募集非公開化ができる
-- [ ] cron(`expire_recruitments`・`refresh_ranks`)が成功(Render の cron ログ)
+- [ ] 定期実行(`expire_recruitments`・`refresh_ranks`)が成功(GitHub Actions の Scheduled jobs ログ)
 - [ ] Sentry にイベントが届く
 - [ ] Supabase が無操作で pause していない(ローンチ後はトラフィックで回避)
 
