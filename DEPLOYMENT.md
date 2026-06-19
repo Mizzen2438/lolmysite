@@ -79,11 +79,34 @@
 
 ## 6. デプロイ後の初期設定
 
+初回デプロイ後に、ゲームマスタ初期データと運営アカウントを本番 DB に投入する。
+
+> **無料枠には Render Shell が無い**ため、`render.yaml` の cron 同様、GitHub Actions の
+> ホストランナーから本番 DB(Supabase)へ直接つないで実行する
+> (`.github/workflows/initial-setup.yml`、手動実行専用)。
+
+1. リポジトリ Secrets(Settings → Secrets and variables → Actions)を用意:
+   - `DJANGO_SECRET_KEY` / `DATABASE_URL` … scheduled.yml と共用(設定済みのはず)
+   - `DJANGO_SUPERUSER_PASSWORD` … **このワークフロー用に新規追加**(運営アカウントのパスワード)
+2. Actions タブ → **Initial setup → Run workflow** を実行:
+   - `task` = `both`(初回。`loaddata` / `superuser` で個別実行も可)
+   - `discord_id` = **運営者本人の Discord 数値ID**(Discord の開発者モードを有効化 →
+     自分を右クリック →「ユーザーIDをコピー」)。サイト本体は Discord OAuth ログインのため、
+     ここで実アカウントの ID を入れると同一アカウントとして `/admin/` とサイトの両方を使える。
+
+実行内容(= 旧 Render Shell 手順と同等):
+
 ```bash
-# Render の Shell から(本番 DATABASE_URL に対して)
-python manage.py loaddata league_of_legends   # ゲームマスタ初期データ
+python manage.py loaddata league_of_legends   # ゲームマスタ初期データ(games.Game pk=1)
 python manage.py createsuperuser               # 運営アカウント(Discord ID + パスワード)
 ```
+
+> **冪等性**: `loaddata` は pk 固定のため再実行で上書き(初回のみで十分)。`superuser` は
+> 再実行すると既存ユーザーをスーパーユーザー化しパスワードを再設定する(パスワード再設定にも使える)。
+>
+> 別法: ローカルに開発環境があれば、本番の Session pooler URL を使って
+> `DATABASE_URL='<本番URL>' python manage.py loaddata league_of_legends` /
+> `… createsuperuser` を手元から実行してもよい。
 
 ## 7. 動作確認チェックリスト
 

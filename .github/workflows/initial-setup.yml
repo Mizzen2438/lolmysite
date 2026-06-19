@@ -1,0 +1,99 @@
+name: Initial setup
+
+# デプロイ後の初期設定(DEPLOYMENT.md セクション6)を GitHub Actions で行う。
+# Render の無料枠には Shell が無いため、scheduled.yml と同じく GitHub ホストランナーから
+# 本番 DB(Supabase)へ直接つないで管理コマンドを実行する。手動実行(workflow_dispatch)専用。
+#
+#   - loaddata league_of_legends … ゲームマスタ初期データ(games.Game pk=1)
+#   - createsuperuser            … 運営アカウント(Discord ID + パスワード)
+#
+# 必要な Secrets(Settings → Secrets and variables → Actions):
+#   DJANGO_SECRET_KEY, DATABASE_URL … scheduled.yml と共用(設定済みのはず)
+#   DJANGO_SUPERUSER_PASSWORD       … 運営アカウントのパスワード(★このワークフロー用に新規追加)
+#
+# 実行方法: Actions タブ → Initial setup → Run workflow。
+#   task        = both / loaddata / superuser
+#   discord_id  = 運営者本人の Discord 数値ID(superuser 作成時に使用)
+#
+# 冪等性: loaddata は pk 固定のため再実行で上書き。superuser は再実行すると既存ユーザーを
+#         スーパーユーザー化しパスワードを再設定する(=パスワード再設定にも使える)。
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "実行するタスク"
+        type: choice
+        default: both
+        options:
+          - both
+          - loaddata
+          - superuser
+      discord_id:
+        description: "運営者の Discord 数値ID(superuser 作成時に必要)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: initial-setup
+  cancel-in-progress: false
+
+env:
+  DJANGO_DEBUG: "False"
+  DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  initial-setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # スキーマが無い状態(初回デプロイ前など)でも単独で成立するよう、念のため migrate。
+      # 通常はデプロイ時(render.yaml の startCommand)に適用済みで、ここでは no-op。
+      - name: Migrate (idempotent)
+        run: python manage.py migrate --noinput
+
+      - name: Load game master data
+        if: ${{ inputs.task == 'both' || inputs.task == 'loaddata' }}
+        run: python manage.py loaddata league_of_legends
+
+      - name: Create or update superuser
+        if: ${{ inputs.task == 'both' || inputs.task == 'superuser' }}
+        env:
+          SUPERUSER_DISCORD_ID: ${{ inputs.discord_id }}
+          DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+        run: |
+          python manage.py shell <<'PY'
+          import os
+          from django.contrib.auth import get_user_model
+
+          User = get_user_model()
+          discord_id = os.environ.get("SUPERUSER_DISCORD_ID", "").strip()
+          password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "")
+
+          if not discord_id:
+              raise SystemExit("入力 discord_id が空です。Run workflow で運営者の Discord 数値IDを指定してください。")
+          if not password:
+              raise SystemExit("Secret DJANGO_SUPERUSER_PASSWORD が未設定です。")
+
+          user = User.objects.filter(discord_id=discord_id).first()
+          if user is None:
+              User.objects.create_superuser(discord_id=discord_id, password=password)
+              print(f"created superuser discord_id={discord_id}")
+          else:
+              user.is_staff = True
+              user.is_superuser = True
+              user.set_password(password)
+              user.save(update_fields=["is_staff", "is_superuser", "password"])
+              print(f"updated existing user to superuser discord_id={discord_id}")
+          PY
