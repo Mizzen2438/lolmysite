@@ -65,7 +65,7 @@ Discord 集合案内まで確認できる。
   python manage.py refresh_ranks --active-days 14
   ```
 
-  本番では Render Cron Job / Celery Beat / system cron で日次スケジュールする。
+  本番は GitHub Actions(`.github/workflows/scheduled.yml`)で日次スケジュールする(03:00 JST)。
 
 ## 募集(M4)
 
@@ -73,7 +73,7 @@ Discord 集合案内まで確認できる。
 - 作成時にレーン枠(自分の担当 + 募集レーン + 追加 FILL 枠)を生成。
 - 一覧はモード・ランク帯・空きレーン・タグ・募集中のみで絞り込み(F-SRCH-02)。
 - Discord 招待リンクは一覧クエリから除外し、募集主・参加者のみに表示(F-DSC-02 / N-06)。
-- 開始時刻を過ぎた募集中の募集を期限切れにする(F-REC-05、毎分スケジュール推奨):
+- 開始時刻を過ぎた募集中の募集を期限切れにする(F-REC-05、GitHub Actions で 15 分毎にスケジュール):
 
   ```bash
   python manage.py expire_recruitments
@@ -99,8 +99,9 @@ Discord 集合案内まで確認できる。
 
 ## 本番デプロイ(M7)
 
-- 構成: **Cloudflare(前段)+ Render(Django/cron)+ Supabase(PostgreSQL)+ Upstash(Redis)**。
-- Render Blueprint(`render.yaml`): Web + cron 2 本を定義(DB/Redis は外部マネージドを `DATABASE_URL`/`CACHE_URL` で接続)。
+- 構成: **Cloudflare(前段)+ Render(Django Web)+ Supabase(PostgreSQL)+ Upstash(Redis)**。
+- Render Blueprint(`render.yaml`): Web サービスを定義(DB/Redis は外部マネージドを `DATABASE_URL`/`CACHE_URL` で接続)。
+- 定期実行(`expire_recruitments`/`refresh_ranks`)は Render 無料枠に cron が無いため GitHub Actions(`.github/workflows/scheduled.yml`)で代替。
 - ドメイン `neonq.online` と `www.neonq.online` の両対応(正規化リダイレクトは Cloudflare か `DJANGO_PREPEND_WWW`)。
 - `Procfile`(release で migrate)・`runtime.txt`(Python 3.12)で Heroku 系にも対応。
 - 本番は `DEBUG=False` で HTTPS 強制・HSTS・セキュアクッキー(N-05)、静的ファイルは WhiteNoise の manifest ストレージ。

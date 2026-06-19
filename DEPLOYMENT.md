@@ -5,9 +5,12 @@
 ```
 ユーザー → Cloudflare(DNS / SSL / CDN / WAF・無料)
                  ↓
-        Render(Django Web + cron 2 本)
+        Render(Django Web)
             ├─ Supabase(PostgreSQL・東京)
             └─ Upstash(Redis・キャッシュ)
+
+定期実行(expire_recruitments / refresh_ranks)は GitHub Actions
+(.github/workflows/scheduled.yml)で代替する。
 ```
 
 ドメイン: `neonq.online`(apex)と `www.neonq.online` の両方を使う。
@@ -36,19 +39,29 @@
 1. Redis データベースを作成(JP に近いリージョン)。
 2. `rediss://default:<password>@<region>.upstash.io:6379` を Render の `CACHE_URL` に設定。
 
-## 4. Render(アプリ + cron)
+## 4. Render(Web サービス)
 
-1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web + cron 2 本が作成される。DB/Redis は外部なので Render では作らない)。
+1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web サービスが作成される。DB/Redis は外部なので Render では作らない)。
 2. 環境変数グループ `neonq-shared` の `sync: false` を入力:
    - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`
    - `RIOT_API_KEY`(Production Key)
    - `SENTRY_DSN`
    - `DATABASE_URL`(Supabase)/ `CACHE_URL`(Upstash)
 3. Web サービスに設定:
-   - `DJANGO_ALLOWED_HOSTS` = `neonq.online,www.neonq.online,<app>.onrender.com`
-   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.online,https://www.neonq.online`
+   - `DJANGO_ALLOWED_HOSTS` = `neonq.online,www.neonq.online,.onrender.com`
+   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.online,https://www.neonq.online,https://*.onrender.com`
    - `DJANGO_PREPEND_WWW` = `False`(www を正規ホストにしたい場合のみ `True`)
-4. デプロイ。ビルドで `collectstatic`、リリース前に `migrate` が走る。まず Render の `<app>.onrender.com` で動作確認する。
+4. デプロイ。ビルドで `collectstatic`、起動時に `migrate`(無料枠は preDeploy 非対応のため startCommand 内で実行)→ `gunicorn`。まず Render の `<app>.onrender.com` で動作確認する。
+
+> **定期実行(cron)について**: Render の cron は無料枠が無いため、`render.yaml` には含めていない。
+> `expire_recruitments`(募集の自動期限切れ)と `refresh_ranks`(ランク日次更新)は、
+> GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`)で無料代替する。
+> 同ワークフローは本番 DB に直接つなぐため、リポジトリ Secrets(Settings → Secrets and
+> variables → Actions)に `DJANGO_SECRET_KEY` / `DATABASE_URL` / `CACHE_URL` /
+> `RIOT_API_KEY`(任意で `RIOT_PLATFORM` / `RIOT_REGIONAL`)を設定する。手動実行は
+> Actions タブの **Scheduled jobs → Run workflow** から(`expire` / `refresh` / `both`)。
+> ローンチ初期はスケジュールが無くても致命的ではない(ランクは連携時/手動更新で取得、
+> 期限切れは表示側でも考慮)。
 
 ## 5. Cloudflare + 独自ドメイン(neonq.online / www)
 
@@ -82,7 +95,7 @@ python manage.py createsuperuser               # 運営アカウント(Discord I
 - [ ] Riot 連携でランクが自動取得・表示される
 - [ ] 募集作成 → 別ユーザーで応募 → 承認 → 成立 → 集合案内通知 → 招待リンク表示
 - [ ] `/admin/` で通報確認・凍結・募集非公開化ができる
-- [ ] cron(`expire_recruitments`・`refresh_ranks`)が成功(Render の cron ログ)
+- [ ] 定期実行(`expire_recruitments`・`refresh_ranks`)が成功(GitHub Actions の Scheduled jobs ログ)
 - [ ] Sentry にイベントが届く
 - [ ] Supabase が無操作で pause していない(ローンチ後はトラフィックで回避)
 
