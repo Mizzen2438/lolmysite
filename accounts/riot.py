@@ -12,11 +12,14 @@ service layer to translate into user-facing messages.
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import quote
 
 import httpx
 from django.conf import settings
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 
 
 class RiotError(Exception):
@@ -66,11 +69,27 @@ def format_rank(entry: dict) -> str:
     return f"{tier_ja} {division}".strip()
 
 
+def _cache_get(key):
+    """Cache read that degrades to a miss if the cache backend is unavailable."""
+    try:
+        return cache.get(key)
+    except Exception:
+        logger.warning("Riot cache get failed; treating as miss", exc_info=True)
+        return None
+
+
+def _cache_set(key, value):
+    try:
+        cache.set(key, value, settings.RIOT_CACHE_TTL)
+    except Exception:
+        logger.warning("Riot cache set failed; continuing without caching", exc_info=True)
+
+
 def _request(url: str, *, cache_key: str) -> dict | list:
     if not settings.RIOT_API_KEY:
         raise RiotConfigError("RIOT_API_KEY が設定されていません。")
 
-    cached = cache.get(cache_key)
+    cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
@@ -85,7 +104,7 @@ def _request(url: str, *, cache_key: str) -> dict | list:
 
     if resp.status_code == 200:
         data = resp.json()
-        cache.set(cache_key, data, settings.RIOT_CACHE_TTL)
+        _cache_set(cache_key, data)
         return data
     if resp.status_code == 404:
         raise RiotNotFound()

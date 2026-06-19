@@ -193,6 +193,24 @@ TIME_ZONE = "Asia/Tokyo"
 USE_I18N = True
 USE_TZ = True
 
+# --- Logging ------------------------------------------------------------
+
+# Surface unhandled errors (incl. 500 tracebacks) on stdout/stderr so they are
+# captured by the host (Render). Django's default config hides these when
+# DEBUG=False, which makes production debugging impossible.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"simple": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+    },
+}
+
 # --- Static files -------------------------------------------------------
 
 STATIC_URL = "static/"
