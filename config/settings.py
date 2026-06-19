@@ -185,6 +185,8 @@ RIOT_REGIONAL = os.environ.get("RIOT_REGIONAL", "asia")
 RIOT_CACHE_TTL = int(os.environ.get("RIOT_CACHE_TTL", str(60 * 60 * 24)))
 # Minimum interval between user-triggered rank refreshes (seconds).
 RIOT_REFRESH_COOLDOWN = int(os.environ.get("RIOT_REFRESH_COOLDOWN", "600"))
+# Domain-verification code served at /riot.txt during Production key review (N-14).
+RIOT_VERIFICATION_CODE = os.environ.get("RIOT_VERIFICATION_CODE", "")
 
 # --- Internationalization ----------------------------------------------
 
