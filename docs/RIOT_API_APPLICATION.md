@@ -73,9 +73,8 @@ any endorsement by Riot Games (a legal disclaimer is shown site-wide).
 
 **APIs / Endpoints used**
 ```
-- Account-V1   : /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}   (regional: asia)
-- Summoner-V4  : /lol/summoner/v4/summoners/by-puuid/{puuid}                  (platform: jp1)
-- League-V4    : /lol/league/v4/entries/by-summoner/{summonerId}             (platform: jp1)
+- Account-V1 : /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}  (regional: asia)
+- League-V4  : /lol/league/v4/entries/by-puuid/{puuid}                    (platform: jp1)
 ```
 
 **How do you handle rate limits? / Expected request volume**

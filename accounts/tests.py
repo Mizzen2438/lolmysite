@@ -197,6 +197,19 @@ class RiotClientTests(TestCase):
             with self.assertRaises(riot.RiotConfigError):
                 riot.resolve_account("H", "JP1")
 
+    def test_fetch_ranks_uses_league_by_puuid(self):
+        # League-V4 by-puuid is a single call (no Summoner-V4 / encrypted id).
+        entries = [
+            {"queueType": "RANKED_SOLO_5x5", "tier": "GOLD", "rank": "II"},
+            {"queueType": "RANKED_FLEX_SR", "tier": "PLATINUM", "rank": "IV"},
+        ]
+        resp = SimpleNamespace(status_code=200, headers={}, json=lambda: entries)
+        with mock.patch("accounts.riot.httpx.get", return_value=resp) as get:
+            ranks = riot.fetch_ranks("PUUID-XYZ")
+        self.assertEqual(get.call_count, 1)
+        self.assertIn("by-puuid/PUUID-XYZ", get.call_args.args[0])
+        self.assertEqual(ranks, {"solo": "ゴールド II", "flex": "プラチナ IV"})
+
 
 class RiotServiceTests(TestCase):
     def setUp(self):
