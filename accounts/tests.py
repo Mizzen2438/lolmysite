@@ -337,3 +337,12 @@ class SeedDemoCommandTests(TestCase):
         self.assertEqual(Application.objects.count(), 1)
         call_command("seed_demo")  # second run must not duplicate
         self.assertEqual(Recruitment.objects.count(), 3)
+
+
+class RiotTxtTests(TestCase):
+    @override_settings(RIOT_VERIFICATION_CODE="abc-123-verify")
+    def test_riot_txt_returns_exact_code(self):
+        resp = self.client.get("/riot.txt")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/plain")
+        self.assertEqual(resp.content.decode(), "abc-123-verify")
