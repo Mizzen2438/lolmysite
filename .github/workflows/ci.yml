@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  # GitHub Flow: validate every PR, and re-validate main after merge.
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: neonq
+          POSTGRES_USER: neonq
+          POSTGRES_PASSWORD: neonq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U neonq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SECRET_KEY: ci-secret-key
+      DJANGO_DEBUG: "True"
+      DATABASE_URL: postgres://neonq:neonq@localhost:5432/neonq
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: python manage.py test --verbosity 2

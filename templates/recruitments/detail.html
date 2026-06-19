@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}募集詳細 — NEONQ{% endblock %}
+
+{% block content %}
+<p style="margin-top:14px;"><a href="{% url 'recruitment_list' %}">← 募集一覧に戻る</a></p>
+
+{% if recruitment.is_hidden %}
+  <div class="proto-note" style="color:var(--danger); border-color:var(--danger);">
+    この募集は運営により非公開化されています(一般ユーザーには表示されません)。
+  </div>
+{% endif %}
+
+<div class="detail-head">
+  <span class="badge badge-mode">{{ recruitment.mode }}</span>
+  {% if recruitment.status == 'open' %}<span class="badge badge-status-open">募集中</span>
+  {% elif recruitment.status == 'filled' %}<span class="badge badge-status-filled">成立</span>
+  {% else %}<span class="badge badge-status-closed">{{ recruitment.get_status_display }}</span>{% endif %}
+  <h1>{{ recruitment.comment|default:"(コメントなし)" }}</h1>
+</div>
+<div>{% for t in recruitment.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</div>
+
+<div class="panel">
+  <h2>募集条件</h2>
+  <dl class="kv">
+    <dt>対象ランク帯</dt><dd>{{ recruitment.rank_range_display }}</dd>
+    <dt>開始予定</dt><dd>{{ recruitment.start_at|date:"Y/n/j (D) H:i" }}</dd>
+    <dt>想定プレイ時間</dt><dd>{{ recruitment.duration_label|default:"—" }}</dd>
+    <dt>ボイスチャット</dt><dd>{{ recruitment.vc_tool|default:"—" }}</dd>
+    <dt>募集主</dt><dd>{{ recruitment.owner }}{% if recruitment.owner.rank_solo %}({{ recruitment.owner.rank_solo }}){% endif %}</dd>
+  </dl>
+</div>
+
+<div class="panel">
+  <h2>参加メンバー({{ recruitment.filled_count }}/{{ recruitment.total_slots }})</h2>
+  {% for slot in recruitment.slots.all %}
+    <div class="member-row">
+      {% if slot.member_id %}
+        <span class="avatar">{{ slot.member.discord_name|slice:":1"|upper }}</span>
+        <div>
+          <div class="name">{{ slot.member }}</div>
+          <div class="sub">{% if slot.member.rank_solo %}{{ slot.member.rank_solo }}{% endif %}</div>
+        </div>
+        <span class="spacer"></span>
+        <span class="slot filled">{{ slot.lane }}</span>
+      {% else %}
+        <span class="avatar">?</span>
+        <div><div class="name" style="color:var(--text-dim);">募集中</div></div>
+        <span class="spacer"></span>
+        <span class="slot wanted">{{ slot.lane }}</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% if can_view_invite %}
+  <div class="discord-box">
+    <h2>🎉 Discord 集合案内</h2>
+    <p style="font-size:0.88rem;">開始時刻までに VC へ集合してください。</p>
+    <a class="btn btn-discord" href="{{ recruitment.discord_invite_url }}" target="_blank" rel="noopener">Discord サーバーに参加する</a>
+  </div>
+{% elif recruitment.discord_invite_url %}
+  <div class="discord-box">
+    <h2>🔒 Discord 集合案内</h2>
+    <p class="locked-note">招待リンクは参加が承認されたメンバーにのみ表示されます。</p>
+  </div>
+{% endif %}
+
+{% if is_owner %}
+  <div class="panel">
+    <h2>応募者の管理({{ pending_applications|length }})</h2>
+    {% for app in pending_applications %}
+      <div class="member-row">
+        <span class="avatar">{{ app.applicant.discord_name|slice:":1"|upper }}</span>
+        <div>
+          <div class="name">{{ app.applicant }} <span class="sub">(希望: {{ app.desired_lane }}{% if app.applicant.rank_solo %} / {{ app.applicant.rank_solo }}{% endif %})</span></div>
+          {% if app.comment %}<div class="sub">「{{ app.comment }}」</div>{% endif %}
+        </div>
+        <span class="spacer"></span>
+        <form method="post" action="{% url 'application_approve' app.pk %}" style="margin:0;">
+          {% csrf_token %}<button class="btn btn-primary btn-sm" type="submit">承認</button>
+        </form>
+        <form method="post" action="{% url 'application_reject' app.pk %}" style="margin:0;">
+          {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">見送り</button>
+        </form>
+      </div>
+    {% empty %}
+      <p class="empty">まだ応募はありません。</p>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h2>募集の管理</h2>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn btn-ghost btn-sm" href="{% url 'recruitment_edit' recruitment.pk %}">編集</a>
+      {% if recruitment.status == 'open' %}
+        <form method="post" action="{% url 'recruitment_close' recruitment.pk %}" style="margin:0;">
+          {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">募集を締め切る</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'recruitment_delete' recruitment.pk %}" style="margin:0;"
+            onsubmit="return confirm('この募集を削除しますか?');">
+        {% csrf_token %}<button class="btn btn-danger btn-sm" type="submit">削除</button>
+      </form>
+    </div>
+  </div>
+
+{% elif viewer_application and viewer_application.status == 'pending' %}
+  <div class="panel">
+    <h2>応募中</h2>
+    <p class="sub">希望レーン: {{ viewer_application.desired_lane }} ・ 募集主の承認をお待ちください。</p>
+    <form method="post" action="{% url 'application_withdraw' viewer_application.pk %}" style="margin-top:8px;">
+      {% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">応募を取り下げる</button>
+    </form>
+  </div>
+
+{% elif viewer_application and viewer_application.status == 'approved' %}
+  <div class="panel">
+    <h2>参加中 🎉</h2>
+    <p class="sub">この募集に参加しています。上の集合案内から Discord に集合してください。</p>
+    <form method="post" action="{% url 'application_decline' viewer_application.pk %}" style="margin-top:8px;"
+          onsubmit="return confirm('参加を辞退しますか?');">
+      {% csrf_token %}<button class="btn btn-danger btn-sm" type="submit">参加を辞退する</button>
+    </form>
+  </div>
+
+{% elif viewer_application and viewer_application.status == 'rejected' %}
+  <div class="panel"><p class="empty">この募集への応募は見送られました。</p></div>
+{% elif recruitment.status == 'open' %}
+  {% if user.is_authenticated %}
+    {% if apply_error %}
+      <div class="panel"><p class="empty">{{ apply_error }}
+        {% if not user.is_riot_linked %}<a href="{% url 'riot_link' %}">Riot ID を連携する</a>{% endif %}
+      </p></div>
+    {% else %}
+      <div class="panel">
+        <h2>この募集に応募する</h2>
+        <form method="post" action="{% url 'application_apply' recruitment.pk %}" class="form-grid">
+          {% csrf_token %}
+          <div class="form-row">
+            <label for="desired_lane">希望レーン</label>
+            <select id="desired_lane" name="desired_lane">
+              {% for lane in open_lanes %}<option value="{{ lane }}">{{ lane }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="apply-comment">ひとことコメント(任意)</label>
+            <textarea id="apply-comment" name="comment" rows="3" placeholder="例: 22時から参加できます。よろしくお願いします!"></textarea>
+          </div>
+          <button class="btn btn-gold btn-block" type="submit">応募する</button>
+        </form>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="panel"><p class="empty"><a href="{% url 'login' %}">ログイン</a>すると応募できます。</p></div>
+  {% endif %}
+{% endif %}
+
+{% if user.is_authenticated and not is_owner %}
+  <div style="text-align:center; margin:20px 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+    <a class="btn btn-ghost btn-sm" href="{% url 'report_create' 'recruitment' recruitment.pk %}">⚠ この募集を通報</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'report_create' 'user' recruitment.owner_id %}">⚠ 募集主を通報</a>
+    {% if viewer_blocked_owner %}
+      <form method="post" action="{% url 'unblock_user' recruitment.owner_id %}" style="margin:0;">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-ghost btn-sm" type="submit">ブロック解除</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'block_user' recruitment.owner_id %}" style="margin:0;">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-ghost btn-sm" type="submit">募集主をブロック</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

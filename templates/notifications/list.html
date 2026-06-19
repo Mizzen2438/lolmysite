@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}通知 — NEONQ{% endblock %}
+
+{% block content %}
+<h1 style="font-size:1.3rem; margin-top:18px;">通知</h1>
+<div class="panel">
+  {% for n in notifications %}
+    <div class="member-row">
+      <div>
+        <div class="name">{{ n.get_type_display }}</div>
+        <div class="sub">{{ n.message }} ・ {{ n.created_at|date:"n/j H:i" }}</div>
+      </div>
+      <span class="spacer"></span>
+      {% if n.recruitment_id %}
+        <a class="btn btn-ghost btn-sm" href="{% url 'recruitment_detail' n.recruitment_id %}">見る</a>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="empty">通知はありません。</p>
+  {% endfor %}
+</div>
+{% endblock %}

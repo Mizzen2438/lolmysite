@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}ログイン — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 460px; margin: 40px auto; text-align: center;">
+  <h2>ログイン / 新規登録</h2>
+  <p style="color: var(--text-dim); font-size: 0.9rem;">
+    Discord アカウントでログインします。新規登録・パスワードは不要です。
+  </p>
+  <form method="post" action="{% url 'discord_login' %}">
+    {% csrf_token %}
+    <button class="btn btn-discord btn-block" type="submit">Discord でログイン</button>
+  </form>
+  <p class="hint" style="color: var(--text-dim); font-size: 0.78rem; margin-top: 14px;">
+    ログインすると利用規約・コミュニティガイドラインに同意したものとみなされます。<br>
+    作成から日の浅い Discord アカウントはご利用いただけません。
+  </p>
+  {% if dev_login_enabled %}
+    <hr style="border-color: var(--border); margin: 18px 0;">
+    <a class="btn btn-ghost btn-block" href="{% url 'dev_login' %}">ローカルデモログイン(Discord 不要)</a>
+  {% endif %}
+</div>
+{% endblock %}

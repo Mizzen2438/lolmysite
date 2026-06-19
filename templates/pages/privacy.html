@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}プライバシーポリシー — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width:760px; margin:24px auto;">
+  <h1 style="font-size:1.4rem;">プライバシーポリシー</h1>
+  <p class="sub">最終更新日: 【YYYY年MM月DD日】</p>
+
+  <p>NEONQ(以下「本サービス」)は、利用者の個人情報を以下の方針に基づいて取り扱います。運営者は【運営者名】です。</p>
+
+  <h2>1. 取得する情報</h2>
+  <ul>
+    <li><strong>Discord アカウント情報</strong>: Discord OAuth により取得する Discord ユーザー ID・ユーザー名・アバター画像 URL・アカウント作成日時。</li>
+    <li><strong>Riot Games アカウント情報</strong>: 利用者が登録した Riot ID(ゲーム名 + タグライン)、および Riot Games API から取得する PUUID・ランク(ソロ/フレックス)。</li>
+    <li><strong>プロフィール情報</strong>: 得意レーン、プレイ時間帯、ボイスチャットの希望、自己紹介。</li>
+    <li><strong>利用情報</strong>: 募集・応募・通報・ブロック等の操作履歴、アクセスログ。</li>
+  </ul>
+
+  <h2>2. 利用目的</h2>
+  <ul>
+    <li>ゲーム仲間のマッチング(募集・応募・参加者管理)機能の提供</li>
+    <li>ランクに基づく募集条件の判定・表示</li>
+    <li>不正行為の防止、通報対応、コミュニティの健全性維持</li>
+    <li>サービスの改善および障害対応</li>
+  </ul>
+
+  <h2>3. 第三者サービスへの提供・連携</h2>
+  <p>本サービスは認証およびゲーム情報取得のため、以下の外部サービスと連携します。各社のプライバシーポリシーが適用されます。</p>
+  <ul>
+    <li><strong>Discord</strong>(認証): <a href="https://discord.com/privacy" target="_blank" rel="noopener">Discord プライバシーポリシー</a></li>
+    <li><strong>Riot Games</strong>(ゲームアカウント・ランク取得): <a href="https://www.riotgames.com/ja/privacy-notice" target="_blank" rel="noopener">Riot Games プライバシー通知</a></li>
+  </ul>
+  <p>これらの目的以外で、利用者の同意なく個人情報を第三者へ提供することはありません(法令に基づく場合を除く)。</p>
+
+  <h2>4. 保存期間と削除</h2>
+  <p>個人情報はアカウントが有効な間保持します。利用者は退会により個人情報の削除を求めることができます。退会時、個人情報は削除され、募集・応募履歴は匿名化して保持する場合があります。なお、不正対策のため、凍結等の措置に関する記録(Discord ID 単位)は退会後も保持することがあります。</p>
+
+  <h2>5. データの保護</h2>
+  <p>通信は HTTPS で暗号化し、認証トークンや API キーはサーバー側で安全に管理します。</p>
+
+  <h2>6. お問い合わせ</h2>
+  <p>個人情報の開示・訂正・削除のご請求やお問い合わせは【連絡先(メール / 公式 Discord 等)】までご連絡ください。</p>
+
+  <h2>7. 改定</h2>
+  <p>本ポリシーは必要に応じて改定し、本ページに掲示します。</p>
+</div>
+{% endblock %}

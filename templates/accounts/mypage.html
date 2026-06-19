@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}マイページ — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <div class="profile-head">
+    <span class="avatar">{{ user.discord_name|slice:":1"|upper }}</span>
+    <div>
+      <div class="name">{{ user.discord_name|default:"(名前未設定)" }}</div>
+      <div class="sub">Discord ID: {{ user.discord_id }}</div>
+    </div>
+    <span class="spacer" style="flex: 1;"></span>
+    <a class="btn btn-ghost btn-sm" href="{% url 'blocked_list' %}">ブロック管理</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'profile_edit' %}">編集</a>
+  </div>
+  <dl class="kv" style="margin-top: 16px;">
+    <dt>Riot ID</dt>
+    <dd>
+      {% if user.is_riot_linked %}
+        {{ user.riot_id }} <span class="badge badge-status-open">✓ 連携済み</span>
+      {% else %}
+        <a class="btn btn-gold btn-sm" href="{% url 'riot_link' %}">Riot ID を連携する</a>
+      {% endif %}
+    </dd>
+    <dt>ランク(ソロ)</dt><dd>{{ user.rank_solo|default:"アンランク" }}</dd>
+    <dt>ランク(フレックス)</dt><dd>{{ user.rank_flex|default:"アンランク" }}</dd>
+    {% if user.is_riot_linked %}
+    <dt>ランク取得</dt>
+    <dd>
+      {{ user.rank_fetched_at|date:"Y/m/d H:i"|default:"—" }}
+      <form method="post" action="{% url 'riot_refresh' %}" style="display:inline; margin-left:8px;">
+        {% csrf_token %}
+        <button class="btn btn-ghost btn-sm" type="submit" {% if not can_refresh %}disabled{% endif %}>更新</button>
+      </form>
+    </dd>
+    {% endif %}
+    <dt>得意レーン</dt><dd>{{ user.lanes|join:" / "|default:"—" }}</dd>
+    <dt>プレイ時間帯</dt><dd>{{ user.play_hours|default:"—" }}</dd>
+    <dt>VC スタイル</dt><dd>{{ user.get_vc_style_display }}</dd>
+    <dt>自己紹介</dt><dd>{{ user.bio|default:"—"|linebreaksbr }}</dd>
+  </dl>
+</div>
+
+<div class="panel">
+  <h2>自分の募集</h2>
+  {% for r in my_recruitments %}
+    <div class="member-row">
+      <div>
+        <div class="name"><a href="{% url 'recruitment_detail' r.pk %}">{{ r.mode }} — {{ r.start_at|date:"n/j H:i" }}</a></div>
+        <div class="sub">{{ r.get_status_display }} ・ {{ r.filled_count }}/{{ r.total_slots }} 名</div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="empty">まだ募集はありません。<a href="{% url 'recruitment_create' %}">募集を作成</a></p>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h2>応募中・参加中の募集</h2>
+  {% for a in my_applications %}
+    <div class="member-row">
+      <div>
+        <div class="name"><a href="{% url 'recruitment_detail' a.recruitment_id %}">{{ a.recruitment.mode }} — {{ a.recruitment.start_at|date:"n/j H:i" }}</a></div>
+        <div class="sub">希望: {{ a.desired_lane }} ・ {{ a.get_status_display }}</div>
+      </div>
+    </div>
+  {% empty %}
+    <p class="empty">応募中の募集はありません。</p>
+  {% endfor %}
+</div>
+{% endblock %}

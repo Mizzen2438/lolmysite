@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NEONQ{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <span class="logo"><a href="{% url 'home' %}">NEON<span class="logo-q">Q</span></a></span>
+      <nav class="nav">
+        <a href="{% url 'recruitment_list' %}">募集一覧</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'recruitment_create' %}">募集を作成</a>
+          <a href="{% url 'notification_list' %}">通知{% if unread_notifications %} <span class="badge badge-status-open">{{ unread_notifications }}</span>{% endif %}</a>
+          <a href="{% url 'mypage' %}">マイページ</a>
+        {% endif %}
+      </nav>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'account_logout' %}" style="margin:0;">
+          {% csrf_token %}
+          <button class="btn btn-ghost btn-sm" type="submit">ログアウト</button>
+        </form>
+      {% else %}
+        <a class="btn btn-discord btn-sm" href="{% url 'login' %}">Discord でログイン</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="container">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="proto-note">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="links">
+      <a href="{% url 'legal_terms' %}">利用規約</a>
+      <a href="{% url 'legal_privacy' %}">プライバシーポリシー</a>
+    </div>
+    <div style="margin-top:8px; font-size:0.72rem; line-height:1.6;">
+      NEONQ isn't endorsed by Riot Games and doesn't reflect the views or
+      opinions of Riot Games or anyone officially involved in producing or
+      managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </div>
+    <div style="margin-top:4px;">© NEONQ</div>
+  </footer>
+</body>
+</html>

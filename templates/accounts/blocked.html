@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}ログインできません — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 520px; margin: 40px auto; text-align: center;">
+  {% if reason == "suspended" %}
+    <h2>アカウントが凍結されています</h2>
+    <p style="color: var(--text-dim);">
+      この Discord アカウントは利用規約違反により凍結されています。
+      お問い合わせは運営までご連絡ください。
+    </p>
+  {% elif reason == "too_young" %}
+    <h2>ご利用いただけません</h2>
+    <p style="color: var(--text-dim);">
+      作成から {{ min_age_days }} 日以上が経過した Discord アカウントのみご利用いただけます。
+      サブ垢・スマーフ対策のための制限です。
+    </p>
+  {% else %}
+    <h2>ログインできません</h2>
+    <p style="color: var(--text-dim);">ログイン処理を完了できませんでした。</p>
+  {% endif %}
+  <a class="btn btn-ghost" href="{% url 'home' %}">トップへ戻る</a>
+</div>
+{% endblock %}

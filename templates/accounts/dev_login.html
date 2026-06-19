@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}デモログイン — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width:520px; margin:32px auto;">
+  <h2>ローカルデモログイン</h2>
+  <div class="proto-note">
+    ⚠ 開発・デモ専用のログインです(本番では無効)。Discord 認証を介さずに、
+    選んだユーザーとしてログインします。
+  </div>
+  {% for u in users %}
+    <div class="member-row">
+      <span class="avatar">{{ u.discord_name|slice:":1"|upper }}</span>
+      <div>
+        <div class="name">{{ u.discord_name }}</div>
+        <div class="sub">{% if u.rank_solo %}{{ u.rank_solo }}{% else %}未連携{% endif %}{% if u.lanes %} ・ {{ u.lanes|join:"/" }}{% endif %}</div>
+      </div>
+      <span class="spacer"></span>
+      <form method="post" style="margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="user_id" value="{{ u.pk }}">
+        <button class="btn btn-gold btn-sm" type="submit">このユーザーでログイン</button>
+      </form>
+    </div>
+  {% empty %}
+    <p class="empty">デモユーザーがいません。<code>python manage.py seed_demo</code> を実行してください。</p>
+  {% endfor %}
+</div>
+{% endblock %}
