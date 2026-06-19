@@ -36,19 +36,25 @@
 1. Redis データベースを作成(JP に近いリージョン)。
 2. `rediss://default:<password>@<region>.upstash.io:6379` を Render の `CACHE_URL` に設定。
 
-## 4. Render(アプリ + cron)
+## 4. Render(Web サービス)
 
-1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web + cron 2 本が作成される。DB/Redis は外部なので Render では作らない)。
+1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web サービスが作成される。DB/Redis は外部なので Render では作らない)。
 2. 環境変数グループ `neonq-shared` の `sync: false` を入力:
    - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`
    - `RIOT_API_KEY`(Production Key)
    - `SENTRY_DSN`
    - `DATABASE_URL`(Supabase)/ `CACHE_URL`(Upstash)
 3. Web サービスに設定:
-   - `DJANGO_ALLOWED_HOSTS` = `neonq.online,www.neonq.online,<app>.onrender.com`
-   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.online,https://www.neonq.online`
+   - `DJANGO_ALLOWED_HOSTS` = `neonq.online,www.neonq.online,.onrender.com`
+   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.online,https://www.neonq.online,https://*.onrender.com`
    - `DJANGO_PREPEND_WWW` = `False`(www を正規ホストにしたい場合のみ `True`)
-4. デプロイ。ビルドで `collectstatic`、リリース前に `migrate` が走る。まず Render の `<app>.onrender.com` で動作確認する。
+4. デプロイ。ビルドで `collectstatic`、起動時に `migrate`(無料枠は preDeploy 非対応のため startCommand 内で実行)→ `gunicorn`。まず Render の `<app>.onrender.com` で動作確認する。
+
+> **定期実行(cron)について**: Render の cron は無料枠が無いため、`render.yaml` には含めていない。
+> `expire_recruitments`(募集の自動期限切れ)と `refresh_ranks`(ランク日次更新)は、
+> GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`、別 PR で追加)で
+> 無料代替する。ローンチ初期は無くても致命的ではない(ランクは連携時/手動更新で取得、
+> 期限切れは表示側でも考慮)。
 
 ## 5. Cloudflare + 独自ドメイン(neonq.online / www)
 
