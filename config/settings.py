@@ -231,6 +231,11 @@ CSRF_TRUSTED_ORIGINS = [
     if o.strip()
 ]
 
+# Canonical host: when enabled, the apex (neonq.online) 301-redirects to
+# www.neonq.online (handled by CommonMiddleware). The reverse direction, if
+# preferred, is configured as a redirect rule at Cloudflare instead.
+PREPEND_WWW = env_bool("DJANGO_PREPEND_WWW", False)
+
 # --- Project-specific policy -------------------------------------------
 
 # F-UNIQ-07: minimum Discord account age (in days) required to register.

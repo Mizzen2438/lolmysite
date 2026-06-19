@@ -1,52 +1,95 @@
 # デプロイ手順(M7)
 
-Render の Blueprint(`render.yaml`)を前提とした手順。Railway / Fly.io でも
-`Procfile`・環境変数・cron 相当を用意すれば同様に動く。
+本番構成:
+
+```
+ユーザー → Cloudflare(DNS / SSL / CDN / WAF・無料)
+                 ↓
+        Render(Django Web + cron 2 本)
+            ├─ Supabase(PostgreSQL・東京)
+            └─ Upstash(Redis・キャッシュ)
+```
+
+ドメイン: `neonq.online`(apex)と `www.neonq.online` の両方を使う。
 
 ## 1. 事前準備
 
 | 項目 | 内容 |
 |---|---|
-| Discord アプリ | [Developer Portal](https://discord.com/developers/applications) で Client ID / Secret を取得。OAuth2 リダイレクト URL に `https://<本番ドメイン>/accounts/discord/login/callback/` を登録 |
-| Riot API キー | **Production API Key を申請**(N-14)。承認に日数がかかるため早めに。開発中は Development Key で可 |
+| Discord アプリ | [Developer Portal](https://discord.com/developers/applications) で Client ID / Secret を取得。OAuth2 リダイレクト URL に `https://neonq.online/accounts/discord/login/callback/` と `https://www.neonq.online/accounts/discord/login/callback/` を登録 |
+| Riot API キー | **Production API Key を申請**(N-14、`docs/RIOT_API_APPLICATION.md`)。開発中は Development Key で可 |
 | Sentry | プロジェクトを作成し DSN を取得(N-12) |
+| Supabase | プロジェクト作成(**Region: Northeast Asia (Tokyo)**)。DB の接続文字列を取得 |
+| Upstash | Redis データベース作成。`rediss://` URL を取得 |
+| Cloudflare | `neonq.online` をゾーンとして追加(レジストラのネームサーバーを Cloudflare に変更) |
 
-## 2. Render へのデプロイ
+## 2. Supabase(DB)
 
-1. リポジトリを Render に接続し、**New → Blueprint** で `render.yaml` を読み込む。
-   - Web サービス / PostgreSQL / Redis / cron 2 本(`expire_recruitments` 毎分・`refresh_ranks` 日次)が作成される。
-2. 環境変数グループ `neonq-shared` の `sync: false` 項目を入力:
+1. プロジェクトを **Tokyo** リージョンで作成。
+2. Connect → Connection string から接続文字列を取得。
+   - アプリ用 `DATABASE_URL` は **session プーラー(ポート 5432)** を使う。
+   - **マイグレーションも 5432(session/直接)** に対して走らせる。transaction プーラー(6543)は一部 DDL で問題が出るため避ける。
+3. この URL を Render の `DATABASE_URL`(`neonq-shared` グループ)に設定。
+
+## 3. Upstash(Redis)
+
+1. Redis データベースを作成(JP に近いリージョン)。
+2. `rediss://default:<password>@<region>.upstash.io:6379` を Render の `CACHE_URL` に設定。
+
+## 4. Render(アプリ + cron)
+
+1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web + cron 2 本が作成される。DB/Redis は外部なので Render では作らない)。
+2. 環境変数グループ `neonq-shared` の `sync: false` を入力:
    - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`
    - `RIOT_API_KEY`(Production Key)
    - `SENTRY_DSN`
-3. Web サービスに以下を設定:
-   - `DJANGO_ALLOWED_HOSTS` = 本番ドメイン(例: `neonq.onrender.com`)
-   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.onrender.com`
-4. デプロイを実行。ビルドで `collectstatic`、リリース前に `migrate` が走る。
+   - `DATABASE_URL`(Supabase)/ `CACHE_URL`(Upstash)
+3. Web サービスに設定:
+   - `DJANGO_ALLOWED_HOSTS` = `neonq.online,www.neonq.online,<app>.onrender.com`
+   - `DJANGO_CSRF_TRUSTED_ORIGINS` = `https://neonq.online,https://www.neonq.online`
+   - `DJANGO_PREPEND_WWW` = `False`(www を正規ホストにしたい場合のみ `True`)
+4. デプロイ。ビルドで `collectstatic`、リリース前に `migrate` が走る。まず Render の `<app>.onrender.com` で動作確認する。
 
-## 3. デプロイ後の初期設定
+## 5. Cloudflare + 独自ドメイン(neonq.online / www)
+
+1. Render の Web サービス → Settings → Custom Domains に `neonq.online` と `www.neonq.online` を追加し、提示される接続先(`<app>.onrender.com` など)を控える。
+2. Cloudflare の DNS に **CNAME** を 2 本作成(いずれも Proxied = オレンジ雲):
+   - `www` → `<app>.onrender.com`
+   - `neonq.online`(apex)→ `<app>.onrender.com`(Cloudflare は CNAME フラットニング対応)
+3. Cloudflare → SSL/TLS の暗号化モードを **Full (Strict)** にする(Render は正規証明書を持つため)。
+4. **正規化リダイレクト**(どちらか一方に統一して SEO 重複を防ぐ):
+   - apex を正規にする(推奨・URL が短い): Cloudflare の Redirect Rule で `www.neonq.online/*` → `https://neonq.online/$1`(301)。
+   - www を正規にする場合: Render に `DJANGO_PREPEND_WWW=True` を設定(apex→www を Django が 301)。
+5. 反映後、`https://neonq.online` と `https://www.neonq.online` の両方で表示されること、片方がもう片方へ 301 することを確認。
+
+> 注意: Cloudflare のプロキシ配下では `X-Forwarded-Proto` が渡る。Django は `SECURE_PROXY_SSL_HEADER` 設定済みなのでリダイレクトループは起きない。SSL モードを Flexible にすると無限リダイレクトになるため必ず Full (Strict)。
+
+## 6. デプロイ後の初期設定
 
 ```bash
-# Render の Shell から
+# Render の Shell から(本番 DATABASE_URL に対して)
 python manage.py loaddata league_of_legends   # ゲームマスタ初期データ
 python manage.py createsuperuser               # 運営アカウント(Discord ID + パスワード)
 ```
 
-## 4. 動作確認チェックリスト
+## 7. 動作確認チェックリスト
 
-- [ ] `https://<ドメイン>/healthz` が `{"status": "ok"}` を返す
-- [ ] トップ・募集一覧が表示される(HTTP は HTTPS に 301 リダイレクト)
+- [ ] `https://neonq.online/healthz` が `{"status": "ok"}` を返す
+- [ ] `https://www.neonq.online` → `https://neonq.online`(または逆)に 301
+- [ ] HTTP は HTTPS に転送される
 - [ ] 静的ファイルがハッシュ付き URL で配信される(`DJANGO_MANIFEST_STATIC=True`)
 - [ ] Discord でログイン →(規約同意 → プロフィール → Riot 連携)が通る
 - [ ] Riot 連携でランクが自動取得・表示される
 - [ ] 募集作成 → 別ユーザーで応募 → 承認 → 成立 → 集合案内通知 → 招待リンク表示
 - [ ] `/admin/` で通報確認・凍結・募集非公開化ができる
-- [ ] cron: `expire_recruitments`・`refresh_ranks` が成功している(Render の cron ログ)
-- [ ] Sentry にイベントが届く(任意のエラーで確認)
+- [ ] cron(`expire_recruitments`・`refresh_ranks`)が成功(Render の cron ログ)
+- [ ] Sentry にイベントが届く
+- [ ] Supabase が無操作で pause していない(ローンチ後はトラフィックで回避)
 
-## 5. 運用メモ
+## 8. 運用メモ
 
-- 設定は環境変数駆動(`config/settings.py`)。シークレットはリポジトリにコミットしない(N-04)。
-- 本番では `DEBUG=False` により HTTPS 強制・HSTS・セキュアクッキーが有効(N-05)。
-- Riot API はレートリミット遵守のためレスポンスを Redis にキャッシュ(N-13)。
-- バックアップはマネージド PostgreSQL の自動バックアップを利用。
+- 設定は環境変数駆動。シークレットはリポジトリにコミットしない(N-04)。
+- 本番は `DEBUG=False` により HTTPS 強制・HSTS・セキュアクッキー(N-05)。
+- Riot API レスポンスは Upstash にキャッシュ(N-13)。
+- **無料枠の注意**: Render 無料 Web はアイドルでスリープ(コールドスタート)、Supabase 無料は無操作で pause。ローンチ時は Render Web を最小有料にし、Supabase はトラフィックで起こし続けるのが安全。
+- バックアップは Supabase の自動バックアップを利用。

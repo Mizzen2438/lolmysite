@@ -35,17 +35,17 @@ NEONQ
 
 **Product URL** ※公開済みの本番 URL
 ```
-https://<your-domain>
+https://neonq.online
 ```
 
 **Privacy Policy URL**
 ```
-https://<your-domain>/privacy/
+https://neonq.online/privacy/
 ```
 
 **Terms of Service URL**
 ```
-https://<your-domain>/terms/
+https://neonq.online/terms/
 ```
 
 **Game** : `League of Legends`

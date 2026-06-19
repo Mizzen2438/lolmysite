@@ -97,7 +97,9 @@ Discord 集合案内まで確認できる。
 
 ## 本番デプロイ(M7)
 
-- Render Blueprint(`render.yaml`): Web + PostgreSQL + Redis + cron 2 本を定義。
+- 構成: **Cloudflare(前段)+ Render(Django/cron)+ Supabase(PostgreSQL)+ Upstash(Redis)**。
+- Render Blueprint(`render.yaml`): Web + cron 2 本を定義(DB/Redis は外部マネージドを `DATABASE_URL`/`CACHE_URL` で接続)。
+- ドメイン `neonq.online` と `www.neonq.online` の両対応(正規化リダイレクトは Cloudflare か `DJANGO_PREPEND_WWW`)。
 - `Procfile`(release で migrate)・`runtime.txt`(Python 3.12)で Heroku 系にも対応。
 - 本番は `DEBUG=False` で HTTPS 強制・HSTS・セキュアクッキー(N-05)、静的ファイルは WhiteNoise の manifest ストレージ。
 - Sentry でエラー監視(`SENTRY_DSN` = N-12)。`python manage.py check --deploy` がクリーン。
