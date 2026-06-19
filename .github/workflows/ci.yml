@@ -1,8 +1,9 @@
 name: CI
 
 on:
+  # GitHub Flow: validate every PR, and re-validate main after merge.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 jobs:

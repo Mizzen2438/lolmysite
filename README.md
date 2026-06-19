@@ -4,6 +4,8 @@ League of Legends のメンバー募集・応募の専門サービス。
 
 - 要件定義書: [REQUIREMENTS.md](./REQUIREMENTS.md)
 - 基本設計書: [ARCHITECTURE.md](./ARCHITECTURE.md)
+- 開発フロー(GitHub Flow): [CONTRIBUTING.md](./CONTRIBUTING.md)
+- デプロイ手順: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - 画面プロトタイプ(静的 HTML): [prototype/](./prototype/)
 
 技術スタック: Python 3.12 / Django 5.1 / PostgreSQL 16 / Redis(後続マイルストーン)。
