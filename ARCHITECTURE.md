@@ -53,7 +53,7 @@
               ▼                             ▼
       Discord API                     Riot Games API
       ・OAuth2(ログイン)             ・Account-V1(Riot ID→PUUID)
-      ・(将来)Bot 通知               ・Summoner-V4 / League-V4(ランク)
+      ・(将来)Bot 通知               ・League-V4 by-puuid(ランク)
 ```
 
 - 単一リージョン・単一インスタンスで開始(N-02 の同時 500 ユーザーは Django + gunicorn 1〜2 台で十分)

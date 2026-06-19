@@ -128,18 +128,16 @@ def resolve_account(game_name: str, tagline: str) -> dict:
 def fetch_ranks(puuid: str) -> dict:
     """Return {'solo': '<rank>', 'flex': '<rank>'} for the given PUUID.
 
+    Uses League-V4's by-puuid endpoint directly. (Riot deprecated the encrypted
+    summoner id, so the old Summoner-V4 -> League-V4 by-summoner flow no longer
+    works: Summoner-V4 no longer returns an "id" field.)
+
     Missing queues come back as empty strings (treated as アンランク).
     """
-    summoner = _request(
-        f"https://{settings.RIOT_PLATFORM}.api.riotgames.com"
-        f"/lol/summoner/v4/summoners/by-puuid/{puuid}",
-        cache_key=f"riot:summoner:{puuid}",
-    )
-    summoner_id = summoner["id"]
     entries = _request(
         f"https://{settings.RIOT_PLATFORM}.api.riotgames.com"
-        f"/lol/league/v4/entries/by-summoner/{summoner_id}",
-        cache_key=f"riot:league:{summoner_id}",
+        f"/lol/league/v4/entries/by-puuid/{puuid}",
+        cache_key=f"riot:league:puuid:{puuid}",
     )
     ranks = {"solo": "", "flex": ""}
     for entry in entries:
