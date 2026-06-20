@@ -12,7 +12,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from . import riot, services
+from . import riot, services, views
 from .adapters import DiscordSocialAccountAdapter
 from .models import SanctionRecord
 from .utils import discord_id_to_created_at, is_discord_account_old_enough
@@ -210,42 +210,88 @@ class RiotClientTests(TestCase):
         self.assertIn("by-puuid/PUUID-XYZ", get.call_args.args[0])
         self.assertEqual(ranks, {"solo": "ゴールド II", "flex": "プラチナ IV"})
 
+    def test_third_party_code_is_not_cached(self):
+        # Verification must always read live (player just set the code).
+        resp = SimpleNamespace(status_code=200, headers={}, json=lambda: "ABCD1234")
+        with mock.patch("accounts.riot.httpx.get", return_value=resp) as get:
+            self.assertEqual(riot.fetch_third_party_code("PUUID-1"), "ABCD1234")
+            riot.fetch_third_party_code("PUUID-1")
+        self.assertEqual(get.call_count, 2)
+        self.assertIn("third-party-code/by-puuid/PUUID-1", get.call_args.args[0])
+
+    def test_third_party_code_missing_maps_to_not_found(self):
+        resp = SimpleNamespace(status_code=404, headers={}, json=lambda: {})
+        with mock.patch("accounts.riot.httpx.get", return_value=resp):
+            with self.assertRaises(riot.RiotNotFound):
+                riot.fetch_third_party_code("PUUID-1")
+
 
 class RiotServiceTests(TestCase):
     def setUp(self):
         cache.clear()
         self.user = User.objects.create_user(discord_id="link-1")
 
-    def _patch(self, ranks=None):
-        ranks = ranks or {"solo": "ゴールド II", "flex": ""}
-        return (
-            mock.patch.object(
-                services.riot, "resolve_account",
-                return_value={"puuid": "PUUID-1", "gameName": "Hikari", "tagLine": "JP1"},
-            ),
-            mock.patch.object(services.riot, "fetch_ranks", return_value=ranks),
+    def _resolve(self):
+        return mock.patch.object(
+            services.riot, "resolve_account",
+            return_value={"puuid": "PUUID-1", "gameName": "Hikari", "tagLine": "JP1"},
         )
 
-    def test_link_success_sets_puuid_and_rank(self):
-        p1, p2 = self._patch()
-        with p1, p2:
-            services.link_riot_account(self.user, "Hikari", "JP1")
+    def _pending(self, code="CODE1234"):
+        return {"puuid": "PUUID-1", "game_name": "Hikari", "tagline": "JP1", "code": code}
+
+    # --- step 1: begin (issue code, nothing saved) ---
+
+    def test_begin_returns_pending_and_saves_nothing(self):
+        with self._resolve():
+            pending = services.begin_riot_link(self.user, "Hikari", "JP1")
+        self.assertEqual(pending["puuid"], "PUUID-1")
+        self.assertEqual(pending["game_name"], "Hikari")
+        self.assertEqual(len(pending["code"]), 8)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_riot_linked)  # not linked until verified
+
+    def test_begin_duplicate_puuid_is_rejected(self):
+        User.objects.create_user(discord_id="other", riot_puuid="PUUID-1")
+        with self._resolve(), self.assertRaises(services.RiotLinkError):
+            services.begin_riot_link(self.user, "Hikari", "JP1")
+
+    def test_begin_not_found_raises(self):
+        with mock.patch.object(services.riot, "resolve_account", side_effect=riot.RiotNotFound):
+            with self.assertRaises(services.RiotLinkError):
+                services.begin_riot_link(self.user, "Ghost", "JP1")
+
+    # --- step 2: complete (verify ownership, then link) ---
+
+    def test_complete_success_sets_puuid_and_rank(self):
+        with mock.patch.object(services.riot, "fetch_third_party_code", return_value="CODE1234"), \
+             mock.patch.object(services.riot, "fetch_ranks", return_value={"solo": "ゴールド II", "flex": ""}):
+            services.complete_riot_link(self.user, self._pending("CODE1234"))
         self.user.refresh_from_db()
         self.assertEqual(self.user.riot_puuid, "PUUID-1")
         self.assertEqual(self.user.riot_id, "Hikari#JP1")
         self.assertEqual(self.user.rank_solo, "ゴールド II")
         self.assertIsNotNone(self.user.rank_fetched_at)
 
-    def test_link_duplicate_puuid_is_rejected(self):
-        User.objects.create_user(discord_id="other", riot_puuid="PUUID-1")
-        p1, p2 = self._patch()
-        with p1, p2, self.assertRaises(services.RiotLinkError):
-            services.link_riot_account(self.user, "Hikari", "JP1")
-
-    def test_link_not_found_raises(self):
-        with mock.patch.object(services.riot, "resolve_account", side_effect=riot.RiotNotFound):
+    def test_complete_code_mismatch_does_not_link(self):
+        with mock.patch.object(services.riot, "fetch_third_party_code", return_value="WRONG999"):
             with self.assertRaises(services.RiotLinkError):
-                services.link_riot_account(self.user, "Ghost", "JP1")
+                services.complete_riot_link(self.user, self._pending("CODE1234"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_riot_linked)
+
+    def test_complete_code_not_set_yet_raises(self):
+        with mock.patch.object(services.riot, "fetch_third_party_code", side_effect=riot.RiotNotFound):
+            with self.assertRaises(services.RiotLinkError):
+                services.complete_riot_link(self.user, self._pending("CODE1234"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_riot_linked)
+
+    def test_complete_duplicate_puuid_is_rejected(self):
+        User.objects.create_user(discord_id="other", riot_puuid="PUUID-1")
+        with mock.patch.object(services.riot, "fetch_third_party_code", return_value="CODE1234"):
+            with self.assertRaises(services.RiotLinkError):
+                services.complete_riot_link(self.user, self._pending("CODE1234"))
 
     def test_refresh_respects_cooldown(self):
         self.user.riot_puuid = "PUUID-1"
@@ -273,23 +319,65 @@ class RiotViewTests(TestCase):
         self.user.save()
         self.client.force_login(self.user, backend="django.contrib.auth.backends.ModelBackend")
 
-    def test_riot_link_post_success_redirects_to_mypage(self):
-        with mock.patch("accounts.views.link_riot_account") as link:
+    def _pending(self, code="CODE1234"):
+        return {
+            "puuid": "PUUID-1", "game_name": "Hikari", "tagline": "JP1",
+            "code": code, "ts": timezone.now().timestamp(),
+        }
+
+    def _set_pending(self, pending=None):
+        session = self.client.session
+        session[views.RIOT_LINK_SESSION_KEY] = pending or self._pending()
+        session.save()
+
+    def test_riot_link_post_redirects_to_verify(self):
+        pending = {"puuid": "PUUID-1", "game_name": "Hikari", "tagline": "JP1", "code": "CODE1234"}
+        with mock.patch("accounts.views.begin_riot_link", return_value=pending) as begin:
             resp = self.client.post(
                 reverse("riot_link"), {"game_name": "Hikari", "tagline": "JP1"}
             )
-        link.assert_called_once()
-        self.assertRedirects(resp, reverse("mypage"))
+        begin.assert_called_once()
+        self.assertRedirects(resp, reverse("riot_verify"))
+        self.assertIn(views.RIOT_LINK_SESSION_KEY, self.client.session)
 
     def test_riot_link_post_error_stays_on_page(self):
         with mock.patch(
-            "accounts.views.link_riot_account",
+            "accounts.views.begin_riot_link",
             side_effect=services.RiotLinkError("見つかりません"),
         ):
             resp = self.client.post(
                 reverse("riot_link"), {"game_name": "Ghost", "tagline": "JP1"}
             )
         self.assertEqual(resp.status_code, 200)
+        self.assertNotIn(views.RIOT_LINK_SESSION_KEY, self.client.session)
+
+    def test_verify_without_pending_redirects_to_link(self):
+        resp = self.client.get(reverse("riot_verify"))
+        self.assertRedirects(resp, reverse("riot_link"))
+
+    def test_verify_get_shows_code(self):
+        self._set_pending()
+        resp = self.client.get(reverse("riot_verify"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "CODE1234")
+
+    def test_verify_post_success_redirects_to_mypage(self):
+        self._set_pending()
+        with mock.patch("accounts.views.complete_riot_link") as complete:
+            resp = self.client.post(reverse("riot_verify"))
+        complete.assert_called_once()
+        self.assertRedirects(resp, reverse("mypage"))
+        self.assertNotIn(views.RIOT_LINK_SESSION_KEY, self.client.session)
+
+    def test_verify_post_error_keeps_pending(self):
+        self._set_pending()
+        with mock.patch(
+            "accounts.views.complete_riot_link",
+            side_effect=services.RiotLinkError("まだ確認できません"),
+        ):
+            resp = self.client.post(reverse("riot_verify"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(views.RIOT_LINK_SESSION_KEY, self.client.session)
 
     def test_refresh_requires_post(self):
         resp = self.client.get(reverse("riot_refresh"))

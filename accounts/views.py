@@ -11,9 +11,19 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ProfileForm, RiotLinkForm
-from .services import RiotLinkError, can_refresh, link_riot_account, refresh_rank
+from .services import (
+    RiotLinkError,
+    begin_riot_link,
+    can_refresh,
+    complete_riot_link,
+    refresh_rank,
+)
 
 User = get_user_model()
+
+# Session key + lifetime for the in-progress Riot ownership verification.
+RIOT_LINK_SESSION_KEY = "riot_link_pending"
+RIOT_LINK_TTL_SECONDS = 15 * 60
 
 
 def home(request):
@@ -101,12 +111,15 @@ def profile_edit(request):
 
 @login_required
 def riot_link(request):
-    """Link a Riot ID and pull rank from the Riot API (F-ACC-03/06, F-UNIQ-03)."""
+    """Step 1 of linking: enter a Riot ID and get a verification code (F-UNIQ-03).
+
+    Ownership is proven in :func:`riot_verify`; nothing is saved here.
+    """
     if request.method == "POST":
         form = RiotLinkForm(request.POST)
         if form.is_valid():
             try:
-                link_riot_account(
+                pending = begin_riot_link(
                     request.user,
                     form.cleaned_data["game_name"],
                     form.cleaned_data["tagline"],
@@ -114,11 +127,47 @@ def riot_link(request):
             except RiotLinkError as exc:
                 messages.error(request, str(exc))
             else:
-                messages.success(request, "Riot ID を連携し、ランクを取得しました。")
-                return redirect("mypage")
+                pending["ts"] = timezone.now().timestamp()
+                request.session[RIOT_LINK_SESSION_KEY] = pending
+                return redirect("riot_verify")
     else:
+        # Starting over: drop any half-finished verification.
+        request.session.pop(RIOT_LINK_SESSION_KEY, None)
         form = RiotLinkForm()
     return render(request, "accounts/riot_link.html", {"form": form})
+
+
+@login_required
+def riot_verify(request):
+    """Step 2: confirm the verification code set in the LoL client, then link."""
+    pending = request.session.get(RIOT_LINK_SESSION_KEY)
+    expired = (
+        not pending
+        or (timezone.now().timestamp() - pending.get("ts", 0)) > RIOT_LINK_TTL_SECONDS
+    )
+    if expired:
+        request.session.pop(RIOT_LINK_SESSION_KEY, None)
+        messages.error(request, "確認の有効期限が切れました。最初からやり直してください。")
+        return redirect("riot_link")
+
+    if request.method == "POST":
+        try:
+            complete_riot_link(request.user, pending)
+        except RiotLinkError as exc:
+            messages.error(request, str(exc))
+        else:
+            request.session.pop(RIOT_LINK_SESSION_KEY, None)
+            messages.success(request, "Riot ID の所有を確認し、連携してランクを取得しました。")
+            return redirect("mypage")
+
+    return render(
+        request,
+        "accounts/riot_verify.html",
+        {
+            "code": pending["code"],
+            "riot_id": f"{pending['game_name']}#{pending['tagline']}",
+        },
+    )
 
 
 @login_required

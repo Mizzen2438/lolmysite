@@ -9,6 +9,10 @@
     ランクは Riot API から自動取得されます(自己申告はできません)。
     Riot ID は「ゲーム名 + #タグライン」の形式です。
   </p>
+  <p style="color: var(--text-dim); font-size: 0.85rem;">
+    なりすまし防止のため、次の画面で表示される確認コードを
+    <strong>LoL クライアントの「設定 → 検証」</strong>に入力して、本人確認を行います。
+  </p>
   <form method="post" class="form-grid">
     {% csrf_token %}
     {% for field in form %}
@@ -18,7 +22,7 @@
         {% for error in field.errors %}<span class="hint" style="color: var(--danger);">{{ error }}</span>{% endfor %}
       </div>
     {% endfor %}
-    <button class="btn btn-gold btn-block" type="submit">連携してランクを取得</button>
+    <button class="btn btn-gold btn-block" type="submit">次へ(本人確認に進む)</button>
   </form>
   <p style="text-align: center; margin-top: 14px;">
     <a href="{% url 'mypage' %}" class="hint" style="color: var(--text-dim);">後で連携する</a>

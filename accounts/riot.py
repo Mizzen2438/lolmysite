@@ -85,13 +85,14 @@ def _cache_set(key, value):
         logger.warning("Riot cache set failed; continuing without caching", exc_info=True)
 
 
-def _request(url: str, *, cache_key: str) -> dict | list:
+def _request(url: str, *, cache_key: str | None) -> dict | list | str:
     if not settings.RIOT_API_KEY:
         raise RiotConfigError("RIOT_API_KEY が設定されていません。")
 
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
+    if cache_key is not None:
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
 
     try:
         resp = httpx.get(
@@ -104,7 +105,8 @@ def _request(url: str, *, cache_key: str) -> dict | list:
 
     if resp.status_code == 200:
         data = resp.json()
-        _cache_set(cache_key, data)
+        if cache_key is not None:
+            _cache_set(cache_key, data)
         return data
     if resp.status_code == 404:
         raise RiotNotFound()
@@ -146,3 +148,19 @@ def fetch_ranks(puuid: str) -> dict:
         elif entry.get("queueType") == "RANKED_FLEX_SR":
             ranks["flex"] = format_rank(entry)
     return ranks
+
+
+def fetch_third_party_code(puuid: str) -> str:
+    """Return the third-party verification code the player set in the LoL client.
+
+    Proves ownership of the account during linking: only someone signed in to
+    the League client for that account can set this code (设定 → 検証). Never
+    cached — the player has just set it, so we need a live read. Raises
+    RiotNotFound (404) when no code is currently set for the account.
+    """
+    code = _request(
+        f"https://{settings.RIOT_PLATFORM}.api.riotgames.com"
+        f"/lol/platform/v4/third-party-code/by-puuid/{puuid}",
+        cache_key=None,
+    )
+    return str(code).strip()
