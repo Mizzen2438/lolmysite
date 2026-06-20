@@ -10,7 +10,7 @@
       募集・応募の前にプロフィールを設定してください。Riot ID とランクの連携は次のステップで行います。
     </p>
   {% endif %}
-  <form method="post" class="form-grid">
+  <form method="post" class="form-grid" autocomplete="off">
     {% csrf_token %}
     {% for field in form %}
       <div class="form-row">
