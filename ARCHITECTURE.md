@@ -166,13 +166,16 @@ REQUIREMENTS.md 7 章のデータモデルを Django モデルとして具体化
 
 ### 5.2 Riot 連携・ランク取得(F-ACC-03/06/08, F-UNIQ-03, N-13)
 
+連携は **2 段階**(所有者確認つき)で行う:
+
 1. ユーザーが Riot ID(ゲーム名 + タグライン)を入力
-2. `Account-V1 /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` で PUUID を取得(実在確認)
-3. PUUID の unique 制約により、他ユーザー登録済みならエラー(F-UNIQ-03)
-4. `League-V4`(PUUID からランクエントリ取得)でソロ/フレックスのランクを保存、`rank_fetched_at` 更新
-5. キャッシュ: Riot API レスポンスは Redis に TTL 24h で保存。手動更新ボタンはクールダウン(例: 10 分)付き
-6. 定期更新: Celery Beat が毎日、アクティブユーザー(直近 7 日ログイン)のランクをレートリミット内で逐次再取得
-7. 注意: 本人所有の確認(他人の Riot ID を登録する なりすまし)は Riot Sign On(RSO)が必要。**MVP では PUUID 一意性 + 通報で運用し、RSO はフェーズ 2 検討**として REQUIREMENTS に追記する余地あり
+2. `Account-V1 /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` で PUUID を取得(実在確認)。PUUID の unique 制約により、他ユーザー登録済みならこの時点でエラー(F-UNIQ-03)
+3. **本人所有確認**: ワンタイムの検証コードを発行してセッションに保持(この時点では未保存)。ユーザーが LoL クライアントの「設定 → 検証」にコードを入力する
+4. ユーザーが「確認する」を押すと、`LoL Platform-V4 /lol/platform/v4/third-party-code/by-puuid/{puuid}`(非キャッシュ)でコードを読み戻し、発行コードと一致したら所有者と判定 → ここで初めて `riot_puuid` を保存(F-UNIQ-03 本人所有)
+5. `League-V4`(PUUID からランクエントリ取得)でソロ/フレックスのランクを保存、`rank_fetched_at` 更新
+6. キャッシュ: Riot API レスポンスは Redis に TTL 24h で保存(ただし検証コードの読み戻しは常にライブ)。手動更新ボタンはクールダウン(例: 10 分)付き
+7. 定期更新: GitHub Actions が毎日、アクティブユーザー(直近ログイン)のランクをレートリミット内で逐次再取得(`refresh_ranks`)
+8. 補足: third-party-code 方式は通常の Production キーで利用でき、RSO の個別承認なしに「本人がそのアカウントにログイン/操作できること」を証明できる。より厳密な OAuth ログイン(RSO)は承認が得られればフェーズ 2 で置き換え可能
 
 ### 5.3 募集ライフサイクル(F-REC-05/06/07)
 

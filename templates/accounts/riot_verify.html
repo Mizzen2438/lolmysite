@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Riot ID 本人確認 — NEONQ{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 560px; margin: 32px auto;">
+  <h2>本人確認</h2>
+  <p style="color: var(--text-dim); font-size: 0.9rem;">
+    <strong>{{ riot_id }}</strong> があなたのアカウントであることを確認します。
+    下の確認コードを LoL クライアントに入力してください。
+  </p>
+
+  <div class="form-row" style="text-align: center; margin: 20px 0;">
+    <label>確認コード</label>
+    <div style="font-size: 1.8rem; letter-spacing: 0.25em; font-weight: 700; color: var(--gold);">
+      {{ code }}
+    </div>
+  </div>
+
+  <ol style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.8; padding-left: 1.2em;">
+    <li>League of Legends クライアントを起動(ログイン)します。</li>
+    <li>右上の<strong>歯車(設定)→「検証」</strong>を開きます。</li>
+    <li>上の確認コード <code>{{ code }}</code> を入力して保存します。</li>
+    <li>数十秒待ってから、下の「確認する」を押してください。</li>
+  </ol>
+
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-gold btn-block" type="submit">確認する</button>
+  </form>
+
+  <p style="text-align: center; margin-top: 14px;">
+    <a href="{% url 'riot_link' %}" class="hint" style="color: var(--text-dim);">別の Riot ID をやり直す</a>
+    &nbsp;·&nbsp;
+    <a href="{% url 'mypage' %}" class="hint" style="color: var(--text-dim);">後で連携する</a>
+  </p>
+</div>
+{% endblock %}
