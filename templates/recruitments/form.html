@@ -10,7 +10,7 @@
       {% for error in form.non_field_errors %}{{ error }}{% endfor %}
     </div>
   {% endif %}
-  <form method="post" class="form-grid">
+  <form method="post" class="form-grid" autocomplete="off">
     {% csrf_token %}
     {% for field in form %}
       <div class="form-row">
