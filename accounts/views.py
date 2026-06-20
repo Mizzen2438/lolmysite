@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -7,23 +9,25 @@ from django.contrib.auth import login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from . import rso
 from .forms import ProfileForm, RiotLinkForm
 from .services import (
     RiotLinkError,
-    begin_riot_link,
     can_refresh,
-    complete_riot_link,
+    complete_rso_link,
+    link_riot_account,
     refresh_rank,
 )
 
 User = get_user_model()
 
-# Session key + lifetime for the in-progress Riot ownership verification.
-RIOT_LINK_SESSION_KEY = "riot_link_pending"
-RIOT_LINK_TTL_SECONDS = 15 * 60
+# Session keys for the RSO OAuth2 round-trip (CSRF state + id_token nonce).
+RSO_STATE_KEY = "rso_state"
+RSO_NONCE_KEY = "rso_nonce"
 
 
 def home(request):
@@ -111,15 +115,18 @@ def profile_edit(request):
 
 @login_required
 def riot_link(request):
-    """Step 1 of linking: enter a Riot ID and get a verification code (F-UNIQ-03).
+    """Link a Riot account (F-ACC-03/06, F-UNIQ-03).
 
-    Ownership is proven in :func:`riot_verify`; nothing is saved here.
+    When RSO is enabled, ownership is verified via Riot sign-in (riot_rso_login)
+    and the manual Riot ID form is disabled. Otherwise we fall back to the
+    unverified manual entry.
     """
-    if request.method == "POST":
+    rso_enabled = rso.is_enabled()
+    if request.method == "POST" and not rso_enabled:
         form = RiotLinkForm(request.POST)
         if form.is_valid():
             try:
-                pending = begin_riot_link(
+                link_riot_account(
                     request.user,
                     form.cleaned_data["game_name"],
                     form.cleaned_data["tagline"],
@@ -127,47 +134,59 @@ def riot_link(request):
             except RiotLinkError as exc:
                 messages.error(request, str(exc))
             else:
-                pending["ts"] = timezone.now().timestamp()
-                request.session[RIOT_LINK_SESSION_KEY] = pending
-                return redirect("riot_verify")
+                messages.success(request, "Riot ID を連携し、ランクを取得しました。")
+                return redirect("mypage")
     else:
-        # Starting over: drop any half-finished verification.
-        request.session.pop(RIOT_LINK_SESSION_KEY, None)
         form = RiotLinkForm()
-    return render(request, "accounts/riot_link.html", {"form": form})
+    return render(
+        request, "accounts/riot_link.html", {"form": form, "rso_enabled": rso_enabled}
+    )
 
 
 @login_required
-def riot_verify(request):
-    """Step 2: confirm the verification code set in the LoL client, then link."""
-    pending = request.session.get(RIOT_LINK_SESSION_KEY)
-    expired = (
-        not pending
-        or (timezone.now().timestamp() - pending.get("ts", 0)) > RIOT_LINK_TTL_SECONDS
-    )
-    if expired:
-        request.session.pop(RIOT_LINK_SESSION_KEY, None)
-        messages.error(request, "確認の有効期限が切れました。最初からやり直してください。")
+def riot_rso_login(request):
+    """Start RSO sign-in: redirect the user to Riot to authenticate (F-ACC-09)."""
+    if not rso.is_enabled():
+        raise Http404()
+    state = secrets.token_urlsafe(24)
+    nonce = secrets.token_urlsafe(24)
+    request.session[RSO_STATE_KEY] = state
+    request.session[RSO_NONCE_KEY] = nonce
+    redirect_uri = request.build_absolute_uri(reverse("riot_rso_callback"))
+    return redirect(rso.build_authorize_url(redirect_uri, state, nonce))
+
+
+@login_required
+def riot_rso_callback(request):
+    """RSO redirect target: verify the sign-in and link the proven account."""
+    if not rso.is_enabled():
+        raise Http404()
+
+    state = request.session.pop(RSO_STATE_KEY, None)
+    nonce = request.session.pop(RSO_NONCE_KEY, None)
+
+    if request.GET.get("error"):
+        messages.error(request, "Riot ログインがキャンセルされました。")
+        return redirect("riot_link")
+    if not state or request.GET.get("state") != state:
+        messages.error(request, "セッションが無効です。最初からやり直してください。")
+        return redirect("riot_link")
+    code = request.GET.get("code")
+    if not code:
+        messages.error(request, "認可コードが取得できませんでした。")
         return redirect("riot_link")
 
-    if request.method == "POST":
-        try:
-            complete_riot_link(request.user, pending)
-        except RiotLinkError as exc:
-            messages.error(request, str(exc))
-        else:
-            request.session.pop(RIOT_LINK_SESSION_KEY, None)
-            messages.success(request, "Riot ID の所有を確認し、連携してランクを取得しました。")
-            return redirect("mypage")
+    redirect_uri = request.build_absolute_uri(reverse("riot_rso_callback"))
+    try:
+        tokens = rso.exchange_code(code, redirect_uri)
+        puuid = rso.extract_puuid(tokens.get("id_token", ""), nonce=nonce)
+        complete_rso_link(request.user, puuid)
+    except (rso.RsoError, RiotLinkError) as exc:
+        messages.error(request, f"Riot 連携に失敗しました: {exc}")
+        return redirect("riot_link")
 
-    return render(
-        request,
-        "accounts/riot_verify.html",
-        {
-            "code": pending["code"],
-            "riot_id": f"{pending['game_name']}#{pending['tagline']}",
-        },
-    )
+    messages.success(request, "Riot アカウントの所有を確認し、連携しました。")
+    return redirect("mypage")
 
 
 @login_required

@@ -30,6 +30,11 @@ envVarGroups:
         sync: false
       - key: RIOT_API_KEY
         sync: false
+      # Riot Sign On(RSO)。承認後に設定。未設定なら RSO 無効(手動入力にフォールバック)。
+      - key: RSO_CLIENT_ID
+        sync: false
+      - key: RSO_CLIENT_SECRET
+        sync: false
       - key: SENTRY_DSN
         sync: false
       # Supabase の Session pooler(5432)接続文字列(末尾 ?sslmode=require)。

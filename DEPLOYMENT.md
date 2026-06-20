@@ -21,6 +21,7 @@
 |---|---|
 | Discord アプリ | [Developer Portal](https://discord.com/developers/applications) で Client ID / Secret を取得。OAuth2 リダイレクト URL に `https://neonq.online/accounts/discord/login/callback/` と `https://www.neonq.online/accounts/discord/login/callback/` を登録 |
 | Riot API キー | **Production API Key を申請**(N-14、`docs/RIOT_API_APPLICATION.md`)。開発中は Development Key で可 |
+| Riot Sign On(RSO) | 本人所有確認(F-ACC-09)。**Production 承認後**に RSO Client を申請し、redirect URI に `https://neonq.online/onboarding/riot/rso/callback/` と `https://www.neonq.online/onboarding/riot/rso/callback/`、scope `openid offline_access` を登録。発行された `RSO_CLIENT_ID` / `RSO_CLIENT_SECRET` を設定する。**未設定の間は RSO 無効**(手動 Riot ID 入力にフォールバック) |
 | Sentry | プロジェクトを作成し DSN を取得(N-12) |
 | Supabase | プロジェクト作成(**Region: Northeast Asia (Tokyo)**)。DB の接続文字列を取得 |
 | Upstash | Redis データベース作成。`rediss://` URL を取得 |

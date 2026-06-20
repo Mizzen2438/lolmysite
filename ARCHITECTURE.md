@@ -166,16 +166,25 @@ REQUIREMENTS.md 7 章のデータモデルを Django モデルとして具体化
 
 ### 5.2 Riot 連携・ランク取得(F-ACC-03/06/08, F-UNIQ-03, N-13)
 
-連携は **2 段階**(所有者確認つき)で行う:
+連携経路は環境変数 `RSO_CLIENT_ID`/`RSO_CLIENT_SECRET` の有無で切り替わる(`accounts.rso.is_enabled`)。
 
-1. ユーザーが Riot ID(ゲーム名 + タグライン)を入力
-2. `Account-V1 /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` で PUUID を取得(実在確認)。PUUID の unique 制約により、他ユーザー登録済みならこの時点でエラー(F-UNIQ-03)
-3. **本人所有確認**: ワンタイムの検証コードを発行してセッションに保持(この時点では未保存)。ユーザーが LoL クライアントの「設定 → 検証」にコードを入力する
-4. ユーザーが「確認する」を押すと、`LoL Platform-V4 /lol/platform/v4/third-party-code/by-puuid/{puuid}`(非キャッシュ)でコードを読み戻し、発行コードと一致したら所有者と判定 → ここで初めて `riot_puuid` を保存(F-UNIQ-03 本人所有)
-5. `League-V4`(PUUID からランクエントリ取得)でソロ/フレックスのランクを保存、`rank_fetched_at` 更新
-6. キャッシュ: Riot API レスポンスは Redis に TTL 24h で保存(ただし検証コードの読み戻しは常にライブ)。手動更新ボタンはクールダウン(例: 10 分)付き
-7. 定期更新: GitHub Actions が毎日、アクティブユーザー(直近ログイン)のランクをレートリミット内で逐次再取得(`refresh_ranks`)
-8. 補足: third-party-code 方式は通常の Production キーで利用でき、RSO の個別承認なしに「本人がそのアカウントにログイン/操作できること」を証明できる。より厳密な OAuth ログイン(RSO)は承認が得られればフェーズ 2 で置き換え可能
+**RSO 有効時(本人所有確認あり / F-ACC-09・推奨)**
+
+1. ユーザーを `https://auth.riotgames.com/authorize?...&scope=openid+offline_access`(state/nonce 付き)へリダイレクト
+2. コールバックで認可コードを `/token` 交換 → **id_token(JWT)を `/jwks.json` で署名検証**(audience/issuer/nonce 検証)→ `sub` = PUUID を取得。ログイン自体が所有証明
+3. `Account-V1 by-puuid` で表示用 Riot ID を取得(失敗しても連携は継続)→ PUUID 一意性(F-UNIQ-03)を確認して保存
+
+**RSO 無効時(フォールバック / 未承認の間)**
+
+1. ユーザーが Riot ID(ゲーム名 + タグライン)を入力 → `Account-V1 by-riot-id` で PUUID 取得(実在確認のみ・所有確認なし)
+2. PUUID 一意性(F-UNIQ-03)を確認して保存
+
+**共通**
+
+4. `League-V4`(PUUID からランクエントリ取得)でソロ/フレックスのランクを保存、`rank_fetched_at` 更新
+5. キャッシュ: Riot API レスポンスは Redis に TTL 24h で保存。手動更新ボタンはクールダウン(例: 10 分)付き
+6. 定期更新: GitHub Actions(`refresh_ranks`)が毎日、アクティブユーザーのランクをレートリミット内で逐次再取得
+7. 注意: 旧「クライアント内 third-party 検証コード」方式は Riot が 2022 年に廃止済み。本人所有確認は RSO のみがサポート対象
 
 ### 5.3 募集ライフサイクル(F-REC-05/06/07)
 
