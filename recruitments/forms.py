@@ -69,13 +69,21 @@ class RecruitmentBaseForm(forms.ModelForm):
         self.fields["vc_tool"] = forms.ChoiceField(
             label="ボイスチャット", choices=VC_TOOL_CHOICES, required=False
         )
-        # 成立後の集合導線に必須(F-DSC-01/03)。未設定だとマッチング後に
-        # 招待リンクが表示されないため、作成・編集時に入力を必須化する。
-        self.fields["discord_invite_url"].required = True
-        self.fields["discord_invite_url"].help_text = (
-            "成立後、承認した参加者にのみ表示されます。"
-            "Discord サーバー招待リンク(例: https://discord.gg/xxxx)または VC の URL を入力してください。"
-        )
+        # 集合導線(F-DSC-01/03)。Bot 連携が有効なら成立時に専用 VC を自動発行
+        # するため任意。無効な環境では唯一の導線になるため必須化する。
+        if settings.DISCORD_BOT_ENABLED:
+            self.fields["discord_invite_url"].required = False
+            self.fields["discord_invite_url"].label = "Discord 招待リンク(任意)"
+            self.fields["discord_invite_url"].help_text = (
+                "成立時に参加者専用の Discord VC を自動で発行します。"
+                "常設サーバーへ案内したい場合のみ、招待リンクを入力してください。"
+            )
+        else:
+            self.fields["discord_invite_url"].required = True
+            self.fields["discord_invite_url"].help_text = (
+                "成立後、承認した参加者にのみ表示されます。"
+                "Discord サーバー招待リンク(例: https://discord.gg/xxxx)または VC の URL を入力してください。"
+            )
         self.fields["start_at"].input_formats = ["%Y-%m-%dT%H:%M"]
         # Pre-fill rank selects when editing.
         if self.instance and self.instance.pk:

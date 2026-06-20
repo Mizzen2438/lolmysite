@@ -228,3 +228,182 @@ class ApplicationViewTests(TestCase):
         self.client.force_login(self.applicant, backend=BACKEND)
         resp = self.client.get(reverse("recruitment_detail", args=[self.rec.pk]))
         self.assertContains(resp, "この募集に応募する")
+
+
+# --- Discord temp-channel provisioning (F-DSC-05) -----------------------
+
+from unittest import mock  # noqa: E402
+
+from django.test import override_settings  # noqa: E402
+
+from applications import discord  # noqa: E402
+
+DISCORD_ON = dict(
+    DISCORD_BOT_ENABLED=True,
+    DISCORD_BOT_TOKEN="bot-token",
+    DISCORD_GUILD_ID="9999",
+    DISCORD_PARENT_CATEGORY_ID="",
+    DISCORD_CHANNEL_TTL=3600,
+)
+
+
+@override_settings(**DISCORD_ON)
+class DiscordProvisioningTests(TestCase):
+    def setUp(self):
+        self.game = make_game()
+        self.owner = make_user("owner")  # discord_id="owner"
+        self.applicant = make_user("applicant")
+        self.rec = make_recruitment(self.owner, self.game, open_lanes=("MID",))
+
+    def _fill(self):
+        app = services.apply(self.applicant, self.rec, "MID")
+        # Approve outside the on_commit-capturing block in callers as needed.
+        return app
+
+    def _fake_request(self):
+        """Return a _request stand-in that mints sequential channel ids."""
+        state = {"n": 0}
+
+        def fake(method, path, *, json=None):
+            if method == "POST" and path.endswith("/invites"):
+                return {"code": "abc123"}
+            if method == "POST" and "/channels" in path:
+                state["n"] += 1
+                return {"id": f"chan{state['n']}"}
+            if method == "DELETE":
+                return None
+            return {}
+
+        return fake
+
+    def test_provision_creates_private_channels_and_saves(self):
+        services.approve(self._fill())
+        self.rec.refresh_from_db()
+        self.assertEqual(self.rec.status, Recruitment.Status.FILLED)
+
+        calls = []
+
+        def recording(method, path, *, json=None):
+            calls.append((method, path, json))
+            if path.endswith("/invites"):
+                return {"code": "inv9"}
+            if "/channels" in path:
+                return {"id": f"c{len([c for c in calls if '/channels' in c[1]])}"}
+            return None
+
+        with mock.patch.object(discord, "_request", side_effect=recording):
+            ok = discord.provision_match_channels(self.rec)
+
+        self.assertTrue(ok)
+        self.rec.refresh_from_db()
+        self.assertEqual(self.rec.discord_auto_invite_url, "https://discord.gg/inv9")
+        self.assertEqual(len(self.rec.discord_channel_ids), 3)  # category + text + voice
+        self.assertIsNotNone(self.rec.discord_provisioned_at)
+        self.assertIsNotNone(self.rec.discord_cleanup_at)
+
+        # First created channel is the category and carries the @everyone deny
+        # plus an allow overwrite for each participant's discord_id.
+        first_channel = next(c for c in calls if "/channels" in c[1])
+        overwrites = first_channel[2]["permission_overwrites"]
+        ids = {o["id"] for o in overwrites}
+        self.assertIn("9999", ids)  # @everyone (= guild id) deny
+        self.assertIn("owner", ids)
+        self.assertIn("applicant", ids)
+
+    def test_provision_is_idempotent(self):
+        self.rec.discord_provisioned_at = timezone.now()
+        self.rec.save(update_fields=["discord_provisioned_at"])
+        with mock.patch.object(discord, "_request") as m:
+            self.assertTrue(discord.provision_match_channels(self.rec))
+        m.assert_not_called()
+
+    @override_settings(DISCORD_BOT_ENABLED=False)
+    def test_provision_noop_when_disabled(self):
+        with mock.patch.object(discord, "_request") as m:
+            self.assertFalse(discord.provision_match_channels(self.rec))
+        m.assert_not_called()
+
+    def test_provision_rolls_back_on_failure(self):
+        deleted = []
+
+        def flaky(method, path, *, json=None):
+            if method == "DELETE":
+                deleted.append(path)
+                return None
+            if path.endswith("/invites"):
+                raise discord.DiscordError("boom")  # fail at the last step
+            return {"id": f"chan{len(deleted) + len(path)}"}
+
+        with mock.patch.object(discord, "_request", side_effect=flaky):
+            with self.assertRaises(discord.DiscordError):
+                discord.provision_match_channels(self.rec)
+
+        self.rec.refresh_from_db()
+        self.assertEqual(self.rec.discord_channel_ids, [])
+        self.assertIsNone(self.rec.discord_provisioned_at)
+        # The 3 created channels were each deleted during rollback.
+        self.assertEqual(len(deleted), 3)
+
+    def test_fill_schedules_provisioning_on_commit(self):
+        app = services.apply(self.applicant, self.rec, "MID")
+        with mock.patch.object(discord, "provision_match_channels") as prov:
+            with self.captureOnCommitCallbacks(execute=True):
+                services.approve(app)
+        prov.assert_called_once()
+
+    def test_teardown_deletes_channels(self):
+        self.rec.discord_channel_ids = ["a", "b", "c"]
+        self.rec.discord_auto_invite_url = "https://discord.gg/x"
+        self.rec.discord_cleanup_at = timezone.now()
+        self.rec.save()
+        with mock.patch.object(discord, "_request") as m:
+            discord.teardown_match_channels(self.rec)
+        self.assertEqual(m.call_count, 3)
+        self.rec.refresh_from_db()
+        self.assertEqual(self.rec.discord_channel_ids, [])
+        self.assertEqual(self.rec.discord_auto_invite_url, "")
+
+
+@override_settings(**DISCORD_ON)
+class DiscordSyncCommandTests(TestCase):
+    def setUp(self):
+        self.game = make_game()
+        self.owner = make_user("owner")
+
+    def test_command_provisions_pending_and_cleans_expired(self):
+        from django.core.management import call_command
+
+        pending = make_recruitment(self.owner, self.game, status=Recruitment.Status.FILLED)
+        expired = make_recruitment(
+            self.owner, self.game,
+            status=Recruitment.Status.FILLED,
+            discord_provisioned_at=timezone.now() - timedelta(hours=8),
+            discord_channel_ids=["x", "y"],
+            discord_cleanup_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        with mock.patch.object(discord, "provision_match_channels") as prov, \
+             mock.patch.object(discord, "teardown_match_channels") as tear:
+            call_command("sync_discord_channels")
+
+        prov.assert_called_once()
+        self.assertEqual(prov.call_args.args[0].pk, pending.pk)
+        tear.assert_called_once()
+        self.assertEqual(tear.call_args.args[0].pk, expired.pk)
+
+
+class DiscordClientTests(TestCase):
+    @override_settings(**DISCORD_ON)
+    def test_request_sends_bot_auth_and_parses_json(self):
+        fake_resp = mock.Mock(status_code=200)
+        fake_resp.json.return_value = {"id": "123"}
+        with mock.patch("applications.discord.httpx.request", return_value=fake_resp) as req:
+            out = discord._request("POST", "/guilds/9999/channels", json={"name": "x"})
+        self.assertEqual(out, {"id": "123"})
+        _, kwargs = req.call_args
+        self.assertEqual(kwargs["headers"]["Authorization"], "Bot bot-token")
+
+    @override_settings(DISCORD_BOT_ENABLED=False)
+    def test_request_raises_config_error_when_disabled(self):
+        with self.assertRaises(discord.DiscordConfigError):
+            discord._request("GET", "/anything")
