@@ -85,14 +85,13 @@ def _cache_set(key, value):
         logger.warning("Riot cache set failed; continuing without caching", exc_info=True)
 
 
-def _request(url: str, *, cache_key: str | None) -> dict | list | str:
+def _request(url: str, *, cache_key: str) -> dict | list:
     if not settings.RIOT_API_KEY:
         raise RiotConfigError("RIOT_API_KEY が設定されていません。")
 
-    if cache_key is not None:
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            return cached
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         resp = httpx.get(
@@ -105,8 +104,7 @@ def _request(url: str, *, cache_key: str | None) -> dict | list | str:
 
     if resp.status_code == 200:
         data = resp.json()
-        if cache_key is not None:
-            _cache_set(cache_key, data)
+        _cache_set(cache_key, data)
         return data
     if resp.status_code == 404:
         raise RiotNotFound()
@@ -125,6 +123,19 @@ def resolve_account(game_name: str, tagline: str) -> dict:
         f"/riot/account/v1/accounts/by-riot-id/{quote(game_name)}/{quote(tagline)}"
     )
     return _request(url, cache_key=key)
+
+
+def resolve_account_by_puuid(puuid: str) -> dict:
+    """Account-V1 reverse lookup: PUUID -> {puuid, gameName, tagLine}.
+
+    Used after RSO sign-in (which gives us the PUUID) to fetch the display Riot
+    ID for the profile.
+    """
+    url = (
+        f"https://{settings.RIOT_REGIONAL}.api.riotgames.com"
+        f"/riot/account/v1/accounts/by-puuid/{quote(puuid)}"
+    )
+    return _request(url, cache_key=f"riot:account:puuid:{puuid}")
 
 
 def fetch_ranks(puuid: str) -> dict:
@@ -148,19 +159,3 @@ def fetch_ranks(puuid: str) -> dict:
         elif entry.get("queueType") == "RANKED_FLEX_SR":
             ranks["flex"] = format_rank(entry)
     return ranks
-
-
-def fetch_third_party_code(puuid: str) -> str:
-    """Return the third-party verification code the player set in the LoL client.
-
-    Proves ownership of the account during linking: only someone signed in to
-    the League client for that account can set this code (设定 → 検証). Never
-    cached — the player has just set it, so we need a live read. Raises
-    RiotNotFound (404) when no code is currently set for the account.
-    """
-    code = _request(
-        f"https://{settings.RIOT_PLATFORM}.api.riotgames.com"
-        f"/lol/platform/v4/third-party-code/by-puuid/{puuid}",
-        cache_key=None,
-    )
-    return str(code).strip()

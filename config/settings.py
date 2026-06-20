@@ -188,6 +188,15 @@ RIOT_REFRESH_COOLDOWN = int(os.environ.get("RIOT_REFRESH_COOLDOWN", "600"))
 # Domain-verification code served at /riot.txt during Production key review (N-14).
 RIOT_VERIFICATION_CODE = os.environ.get("RIOT_VERIFICATION_CODE", "")
 
+# --- Riot Sign On (RSO / OAuth2) — account ownership verification (F-ACC-09) ---
+# RSO is the only Riot-supported way to prove a user owns a Riot account (the
+# old in-client third-party verification code was removed in 2022). It requires
+# an approved RSO client; until Riot issues credentials these stay empty and the
+# feature is disabled (accounts.rso.is_enabled), so linking falls back to the
+# unverified manual Riot ID entry.
+RSO_CLIENT_ID = os.environ.get("RSO_CLIENT_ID", "")
+RSO_CLIENT_SECRET = os.environ.get("RSO_CLIENT_SECRET", "")
+
 # --- Internationalization ----------------------------------------------
 
 LANGUAGE_CODE = "ja"
