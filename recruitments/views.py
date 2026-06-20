@@ -18,9 +18,9 @@ def recruitment_list(request):
     game = Game.objects.filter(slug="league-of-legends").first()
     tiers = game.rank_tiers if game else []
 
-    # Defer the invite URL so it never reaches the list (F-DSC-02, N-06).
+    # Defer the invite URLs so they never reach the list (F-DSC-02, N-06).
     qs = (
-        Recruitment.objects.defer("discord_invite_url")
+        Recruitment.objects.defer("discord_invite_url", "discord_auto_invite_url")
         .filter(is_hidden=False)
         .select_related("owner", "game")
         .prefetch_related("slots")

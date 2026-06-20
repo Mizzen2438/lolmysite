@@ -56,10 +56,14 @@
 {% if can_view_invite %}
   <div class="discord-box">
     <h2>🎉 Discord 集合案内</h2>
-    <p style="font-size:0.88rem;">開始時刻までに VC へ集合してください。</p>
-    <a class="btn btn-discord" href="{{ recruitment.discord_invite_url }}" target="_blank" rel="noopener">Discord サーバーに参加する</a>
+    {% if recruitment.discord_auto_invite_url %}
+      <p style="font-size:0.88rem;">参加者専用の Discord VC を自動で用意しました。開始時刻までに集合してください。</p>
+    {% else %}
+      <p style="font-size:0.88rem;">開始時刻までに VC へ集合してください。</p>
+    {% endif %}
+    <a class="btn btn-discord" href="{{ recruitment.meetup_invite_url }}" target="_blank" rel="noopener">Discord VC に参加する</a>
   </div>
-{% elif recruitment.discord_invite_url %}
+{% elif recruitment.status == 'filled' or recruitment.meetup_invite_url %}
   <div class="discord-box">
     <h2>🔒 Discord 集合案内</h2>
     <p class="locked-note">招待リンクは参加が承認されたメンバーにのみ表示されます。</p>

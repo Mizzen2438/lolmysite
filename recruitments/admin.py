@@ -16,7 +16,11 @@ class RecruitmentAdmin(admin.ModelAdmin):
     search_fields = ("owner__discord_name", "comment")
     raw_id_fields = ("owner",)
     inlines = [RecruitmentSlotInline]
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "created_at", "updated_at",
+        "discord_auto_invite_url", "discord_channel_ids",
+        "discord_provisioned_at", "discord_cleanup_at",
+    )
     actions = ["hide_recruitments", "unhide_recruitments"]
 
     @admin.action(description="選択した募集を非公開にする")

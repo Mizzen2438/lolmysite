@@ -165,6 +165,21 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+# --- Discord Bot: 成立時の一時 VC/チャンネル自動生成 (F-DSC-05) ----------
+
+# 公式サーバー方式: Bot を公式 Discord サーバーに常駐させ、募集成立時に
+# 参加者だけが見える一時カテゴリ(テキスト+VC)を作成し、招待を自動発行する。
+# REST API のみを使うため常駐 Gateway プロセスは不要(無料枠の Web 構成で動く)。
+DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
+DISCORD_GUILD_ID = os.environ.get("DISCORD_GUILD_ID", "")
+# 任意: 一時チャンネルをまとめる既存の親カテゴリ。未指定なら募集ごとに作る。
+DISCORD_PARENT_CATEGORY_ID = os.environ.get("DISCORD_PARENT_CATEGORY_ID", "")
+DISCORD_API_BASE = os.environ.get("DISCORD_API_BASE", "https://discord.com/api/v10")
+# 開始予定時刻からこの秒数が経過したら一時チャンネルを削除する(既定 6 時間)。
+DISCORD_CHANNEL_TTL = int(os.environ.get("DISCORD_CHANNEL_TTL", str(60 * 60 * 6)))
+# Bot 連携が有効か(両方そろって初めて自動生成を行う)。
+DISCORD_BOT_ENABLED = bool(DISCORD_BOT_TOKEN and DISCORD_GUILD_ID)
+
 # --- Cache --------------------------------------------------------------
 
 # Redis in production (CACHE_URL), in-memory locally. Used to cache Riot API
