@@ -2,13 +2,56 @@
 
 {% block content %}
 <section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
   <div class="container">
-    <h1>一緒に遊ぶ仲間が、3分で見つかる。</h1>
-    <p>League of Legends のメンバー募集・応募の専門サービス。条件で探して、応募して、そのまま Discord に集合。</p>
-    <a class="btn btn-gold" href="{% url 'recruitment_list' %}">募集を見る</a>
-    {% if not user.is_authenticated %}
-      <a class="btn btn-discord" href="{% url 'login' %}">Discord でログイン</a>
-    {% endif %}
+    <span class="hero-eyebrow">League of Legends 専門</span>
+    <h1 class="hero-title">一緒に遊ぶ仲間が、<br><span class="grad">3分</span>で見つかる。</h1>
+    <p class="hero-sub">
+      条件で探して、応募して、そのまま Discord に集合。
+      タイムラインに流れない、構造化されたメンバー募集プラットフォーム。
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-gold btn-lg" href="{% url 'recruitment_list' %}">募集を見る</a>
+      {% if not user.is_authenticated %}
+        <a class="btn btn-discord btn-lg" href="{% url 'login' %}">Discord でログイン</a>
+      {% else %}
+        <a class="btn btn-ghost btn-lg" href="{% url 'recruitment_create' %}">募集を作成</a>
+      {% endif %}
+    </div>
+
+    <div class="hero-stats" aria-label="現在の稼働状況">
+      <div class="stat">
+        <span class="stat-num" data-count="{{ stat_open }}">{{ stat_open }}</span>
+        <span class="stat-label">募集中</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" data-count="{{ stat_slots }}">{{ stat_slots }}</span>
+        <span class="stat-label">空き枠</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" data-count="{{ stat_players }}">{{ stat_players }}</span>
+        <span class="stat-label">登録プレイヤー</span>
+      </div>
+    </div>
   </div>
 </section>
+
+{# Progressive count-up; numbers are already rendered server-side as a fallback. #}
+<script>
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('.stat-num[data-count]').forEach(function (el) {
+      var target = parseInt(el.dataset.count, 10) || 0;
+      if (target <= 0) return;
+      var start = performance.now(), dur = 900;
+      function step(now) {
+        var p = Math.min((now - start) / dur, 1);
+        el.textContent = Math.round((1 - Math.pow(1 - p, 3)) * target);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      el.textContent = '0';
+      requestAnimationFrame(step);
+    });
+  })();
+</script>
 {% endblock %}

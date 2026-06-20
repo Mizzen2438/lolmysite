@@ -17,7 +17,20 @@ User = get_user_model()
 
 
 def home(request):
-    return render(request, "home.html")
+    """Landing page with live activity counters to show the service is alive."""
+    from recruitments.models import Recruitment, RecruitmentSlot
+
+    open_qs = Recruitment.objects.filter(
+        status=Recruitment.Status.OPEN, is_hidden=False
+    )
+    context = {
+        "stat_open": open_qs.count(),
+        "stat_slots": RecruitmentSlot.objects.filter(
+            recruitment__in=open_qs, member__isnull=True
+        ).count(),
+        "stat_players": User.objects.filter(profile_completed=True).count(),
+    }
+    return render(request, "home.html", context)
 
 
 def login_view(request):
