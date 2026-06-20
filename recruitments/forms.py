@@ -69,6 +69,13 @@ class RecruitmentBaseForm(forms.ModelForm):
         self.fields["vc_tool"] = forms.ChoiceField(
             label="ボイスチャット", choices=VC_TOOL_CHOICES, required=False
         )
+        # 成立後の集合導線に必須(F-DSC-01/03)。未設定だとマッチング後に
+        # 招待リンクが表示されないため、作成・編集時に入力を必須化する。
+        self.fields["discord_invite_url"].required = True
+        self.fields["discord_invite_url"].help_text = (
+            "成立後、承認した参加者にのみ表示されます。"
+            "Discord サーバー招待リンク(例: https://discord.gg/xxxx)または VC の URL を入力してください。"
+        )
         self.fields["start_at"].input_formats = ["%Y-%m-%dT%H:%M"]
         # Pre-fill rank selects when editing.
         if self.instance and self.instance.pk:
