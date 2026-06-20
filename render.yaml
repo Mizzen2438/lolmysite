@@ -28,6 +28,11 @@ envVarGroups:
         sync: false
       - key: DISCORD_CLIENT_SECRET
         sync: false
+      # Discord Bot(F-DSC-05): 成立時に一時 VC/チャンネルを自動生成。
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
       - key: RIOT_API_KEY
         sync: false
       - key: SENTRY_DSN

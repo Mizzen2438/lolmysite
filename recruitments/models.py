@@ -40,7 +40,20 @@ class Recruitment(models.Model):
     tags = models.JSONField("雰囲気タグ", default=list, blank=True)
     comment = models.TextField("コメント", blank=True)
     # Shown only to the owner / approved participants (F-DSC-02, N-06).
+    # 任意のフォールバック招待。通常は成立時に Bot が自動発行する(下記)。
     discord_invite_url = models.URLField("Discord 招待リンク", blank=True)
+    # 成立時に公式 Bot が自動生成する一時 VC/チャンネル情報 (F-DSC-05)。
+    discord_auto_invite_url = models.URLField("自動発行 Discord 招待", blank=True)
+    discord_channel_ids = models.JSONField(
+        "自動生成チャンネルID", default=list, blank=True,
+        help_text="後始末用に作成したカテゴリ/テキスト/VC の ID を保持",
+    )
+    discord_provisioned_at = models.DateTimeField(
+        "Discord 発行日時", null=True, blank=True
+    )
+    discord_cleanup_at = models.DateTimeField(
+        "一時チャンネル削除予定", null=True, blank=True
+    )
     status = models.CharField(
         "状態", max_length=16, choices=Status.choices, default=Status.OPEN
     )
@@ -87,9 +100,14 @@ class Recruitment(models.Model):
     def is_owner(self, user) -> bool:
         return user.is_authenticated and user.pk == self.owner_id
 
+    @property
+    def meetup_invite_url(self) -> str:
+        """Auto-generated temp-channel invite, falling back to the manual one."""
+        return self.discord_auto_invite_url or self.discord_invite_url
+
     def can_view_invite(self, user) -> bool:
         """Invite link is visible to the owner and approved participants."""
-        if not self.discord_invite_url or not user.is_authenticated:
+        if not self.meetup_invite_url or not user.is_authenticated:
             return False
         if user.pk == self.owner_id:
             return True
