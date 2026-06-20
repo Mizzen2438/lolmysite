@@ -135,7 +135,7 @@
     {% else %}
       <div class="panel">
         <h2>この募集に応募する</h2>
-        <form method="post" action="{% url 'application_apply' recruitment.pk %}" class="form-grid">
+        <form method="post" action="{% url 'application_apply' recruitment.pk %}" class="form-grid" autocomplete="off">
           {% csrf_token %}
           <div class="form-row">
             <label for="desired_lane">希望レーン</label>

@@ -6,7 +6,7 @@
 <div class="panel" style="max-width:560px; margin:32px auto;">
   <h2>通報する</h2>
   <p style="color:var(--text-dim); font-size:0.9rem;">対象: {{ label }}</p>
-  <form method="post" class="form-grid">
+  <form method="post" class="form-grid" autocomplete="off">
     {% csrf_token %}
     {% for field in form %}
       <div class="form-row">
