@@ -2,11 +2,13 @@ name: Scheduled jobs
 
 # 無料枠の Render には cron が無いため(render.yaml 参照)、定期実行は GitHub Actions で
 # 代替する。GitHub ホストランナーから本番 DB(Supabase)へ直接つなぎ、管理コマンドを実行する。
-#   - expire_recruitments: 開始時刻を過ぎた募集を期限切れにする(F-REC-05)。
-#   - refresh_ranks:       アクティブユーザーのランクを日次で再取得(F-ACC-08)。
+#   - expire_recruitments:   開始時刻を過ぎた募集を期限切れにする(F-REC-05)。
+#   - refresh_ranks:         アクティブユーザーのランクを日次で再取得(F-ACC-08)。
+#   - sync_discord_channels: 成立済み募集の一時 VC/チャンネルを発行/削除(F-DSC-05)。
 #
 # 必要な接続情報はリポジトリ Secrets に設定する(Settings → Secrets and variables → Actions):
 #   DJANGO_SECRET_KEY, DATABASE_URL, CACHE_URL, RIOT_API_KEY
+#   (Discord Bot) DISCORD_BOT_TOKEN, DISCORD_GUILD_ID
 #   (任意) RIOT_PLATFORM, RIOT_REGIONAL — 未設定なら jp1 / asia を既定で使う。
 
 on:
@@ -25,6 +27,7 @@ on:
           - both
           - expire
           - refresh
+          - discord
 
 permissions:
   contents: read
@@ -37,6 +40,8 @@ env:
   RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
   RIOT_PLATFORM: ${{ secrets.RIOT_PLATFORM || 'jp1' }}
   RIOT_REGIONAL: ${{ secrets.RIOT_REGIONAL || 'asia' }}
+  DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+  DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
 
 jobs:
   expire-recruitments:
@@ -80,3 +85,24 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python manage.py refresh_ranks
+
+  sync-discord:
+    # */15 のスケジュール、または手動実行(both/discord)で動く。成立済み募集の
+    # 一時 VC/チャンネルの発行漏れを補完し、期限切れチャンネルを削除する。
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'both' || github.event.inputs.job == 'discord'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: sync-discord
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py sync_discord_channels

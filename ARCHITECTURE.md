@@ -201,8 +201,17 @@ REQUIREMENTS.md 7 章のデータモデルを Django モデルとして具体化
 
 ### 5.5 Discord 招待リンクの表示制御(F-DSC-02, N-06)
 
-- ビュー層で「閲覧者が owner または approved な参加者」の場合のみ `discord_invite_url` をテンプレートへ渡す
-- 一覧 API/ページのシリアライズ対象から常に除外(モデルの `Meta` レベルでなくクエリの `defer`/明示 select で徹底)
+- ビュー層で「閲覧者が owner または approved な参加者」の場合のみ招待リンク(`meetup_invite_url` = 自動発行 → 手入力の順)をテンプレートへ渡す
+- 一覧 API/ページのシリアライズ対象から常に除外(`defer("discord_invite_url", "discord_auto_invite_url")` で徹底)
+
+### 5.5.1 成立時の一時 VC/チャンネル自動生成(F-DSC-05)
+
+- 公式サーバー方式: Bot を 1 つの公式ギルドに常駐させ、成立時に **参加者専用の非公開**カテゴリ(テキスト+VC)を作成して招待を自動発行する(`applications/discord.py`)
+- **REST API のみ**を使用(`httpx`)。常駐 Gateway プロセスは持たないため無料枠の Web 構成で動く
+- 非公開化: `@everyone`(= ギルド ID のロール)に `VIEW_CHANNEL` を deny し、各参加者の `discord_id` に許可オーバーライトを付与(N-06 を Bot 側でも担保)
+- 発行は成立トランザクションの**外**(`transaction.on_commit`)でベストエフォート実行。失敗しても承認フローは壊さず、`discord_provisioned_at` 未設定の成立済み募集を定期コマンド `sync_discord_channels` が拾って再試行する(冪等)
+- 一時チャンネルは `start_at + DISCORD_CHANNEL_TTL` 経過後、同コマンドの cleanup フェーズが削除(作成した全チャンネル ID を `discord_channel_ids` に保持)
+- `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID` 未設定の環境では自動生成は無効化され、募集主が手入力する `discord_invite_url` にフォールバックする(その場合フォームで必須)
 
 ### 5.6 通知(F-NTF-01/02/04)
 

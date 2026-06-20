@@ -20,6 +20,7 @@
 | 項目 | 内容 |
 |---|---|
 | Discord アプリ | [Developer Portal](https://discord.com/developers/applications) で Client ID / Secret を取得。OAuth2 リダイレクト URL に `https://neonq.online/accounts/discord/login/callback/` と `https://www.neonq.online/accounts/discord/login/callback/` を登録 |
+| Discord Bot(F-DSC-05) | 同アプリの **Bot** タブで Bot を作成しトークンを取得。**公式サーバー**を用意し、OAuth2 URL Generator で `bot` スコープ + **チャンネルの管理 / 招待の作成** 権限を付けて招待。サーバー(ギルド)ID を控える(`DISCORD_GUILD_ID`)。成立時に参加者専用の一時 VC/テキストを自動生成する |
 | Riot API キー | **Production API Key を申請**(N-14、`docs/RIOT_API_APPLICATION.md`)。開発中は Development Key で可 |
 | Riot Sign On(RSO) | 本人所有確認(F-ACC-09)。**Production 承認後**に RSO Client を申請し、redirect URI に `https://neonq.online/onboarding/riot/rso/callback/` と `https://www.neonq.online/onboarding/riot/rso/callback/`、scope `openid offline_access` を登録。発行された `RSO_CLIENT_ID` / `RSO_CLIENT_SECRET` を設定する。**未設定の間は RSO 無効**(手動 Riot ID 入力にフォールバック) |
 | Sentry | プロジェクトを作成し DSN を取得(N-12) |
@@ -45,6 +46,7 @@
 1. リポジトリを接続し **New → Blueprint** で `render.yaml` を読み込む(Web サービスが作成される。DB/Redis は外部なので Render では作らない)。
 2. 環境変数グループ `neonq-shared` の `sync: false` を入力:
    - `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`
+   - `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID`(成立時の VC 自動生成。未設定なら手入力の招待リンクにフォールバック)
    - `RIOT_API_KEY`(Production Key)
    - `SENTRY_DSN`
    - `DATABASE_URL`(Supabase)/ `CACHE_URL`(Upstash)
@@ -55,14 +57,15 @@
 4. デプロイ。ビルドで `collectstatic`、起動時に `migrate`(無料枠は preDeploy 非対応のため startCommand 内で実行)→ `gunicorn`。まず Render の `<app>.onrender.com` で動作確認する。
 
 > **定期実行(cron)について**: Render の cron は無料枠が無いため、`render.yaml` には含めていない。
-> `expire_recruitments`(募集の自動期限切れ)と `refresh_ranks`(ランク日次更新)は、
-> GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`)で無料代替する。
+> `expire_recruitments`(募集の自動期限切れ)、`refresh_ranks`(ランク日次更新)、
+> `sync_discord_channels`(成立済み募集の一時 VC/チャンネルの発行漏れ補完と期限切れ削除、
+> F-DSC-05)は、GitHub Actions のスケジュール(`.github/workflows/scheduled.yml`)で無料代替する。
 > 同ワークフローは本番 DB に直接つなぐため、リポジトリ Secrets(Settings → Secrets and
 > variables → Actions)に `DJANGO_SECRET_KEY` / `DATABASE_URL` / `CACHE_URL` /
-> `RIOT_API_KEY`(任意で `RIOT_PLATFORM` / `RIOT_REGIONAL`)を設定する。手動実行は
-> Actions タブの **Scheduled jobs → Run workflow** から(`expire` / `refresh` / `both`)。
-> ローンチ初期はスケジュールが無くても致命的ではない(ランクは連携時/手動更新で取得、
-> 期限切れは表示側でも考慮)。
+> `RIOT_API_KEY` / `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID`(任意で `RIOT_PLATFORM` /
+> `RIOT_REGIONAL`)を設定する。手動実行は Actions タブの **Scheduled jobs → Run workflow**
+> から(`expire` / `refresh` / `discord` / `both`)。ローンチ初期はスケジュールが無くても
+> 致命的ではない(成立時にアプリ側でも自動生成を試み、失敗分のみ後続同期が拾う)。
 
 ## 5. Cloudflare + 独自ドメイン(neonq.online / www)
 

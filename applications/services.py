@@ -181,3 +181,12 @@ def _fill_recruitment(recruitment: Recruitment) -> None:
             message=f"「{recruitment.mode}」が成立しました。Discord に集合しましょう。",
             recruitment_id=recruitment.pk,
         )
+    # F-DSC-05: auto-create the private temp VC/text channels + invite. Runs
+    # after commit (no network I/O inside the transaction) and best-effort —
+    # a failure is retried by the periodic sync_discord_channels command.
+    from django.conf import settings
+
+    if settings.DISCORD_BOT_ENABLED:
+        from applications import discord
+
+        transaction.on_commit(lambda: discord.provision_safely(recruitment))
