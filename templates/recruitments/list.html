@@ -51,49 +51,27 @@
 <ul class="card-list">
   {% for r in recruitments %}
     <li>
-      <a class="recruit-card{% if r.status != 'open' %} is-dim{% endif %}" href="{% url 'recruitment_detail' r.pk %}">
+      <a class="recruit-card" href="{% url 'recruitment_detail' r.pk %}">
         <div class="head">
           <span class="badge badge-mode">{{ r.mode }}</span>
           <span class="badge badge-rank">{{ r.rank_range_display }}</span>
-          {% if r.status == 'open' %}<span class="badge badge-status-open dot">募集中</span>
+          {% if r.status == 'open' %}<span class="badge badge-status-open">募集中</span>
           {% elif r.status == 'filled' %}<span class="badge badge-status-filled">成立</span>
           {% else %}<span class="badge badge-status-closed">{{ r.get_status_display }}</span>{% endif %}
+          <span class="title">{{ r.comment|truncatechars:40|default:"(コメントなし)" }}</span>
         </div>
-
-        <div class="title">{{ r.comment|truncatechars:48|default:"(コメントなし)" }}</div>
-
-        {% if r.total_slots %}
-          <div class="fill">
-            <div class="fill-bar"><i style="width:{% widthratio r.filled_count r.total_slots 100 %}%"></i></div>
-            <div class="fill-text">
-              <span>{{ r.filled_count }}/{{ r.total_slots }} 人 集合</span>
-              {% if r.status == 'open' %}
-                {% with remaining=r.open_lanes|length %}
-                  {% if remaining == 1 %}<span class="fill-urgent">⚡ あと1枠!</span>
-                  {% elif remaining > 1 %}<span>あと{{ remaining }}枠</span>{% endif %}
-                {% endwith %}
-              {% endif %}
-            </div>
-          </div>
-        {% endif %}
-
-        <div class="lane-row">
+        <div class="slot-list">
           {% for slot in r.slots.all %}
-            {% if slot.member_id %}
-              <span class="lane-chip filled"><svg class="lane-ico"><use href="#lane-{{ slot.lane }}"></use></svg>{{ slot.lane }} ✓</span>
-            {% else %}
-              <span class="lane-chip wanted"><svg class="lane-ico"><use href="#lane-{{ slot.lane }}"></use></svg>{{ slot.lane }} 募集</span>
-            {% endif %}
+            {% if slot.member_id %}<span class="slot filled">{{ slot.lane }} ✓</span>
+            {% else %}<span class="slot wanted">{{ slot.lane }} 募集中</span>{% endif %}
           {% endfor %}
         </div>
-
         <div class="meta">
-          <span>🕘 {{ r.start_at|date:"n/j H:i" }}{% if r.duration_label %} ({{ r.duration_label }}){% endif %}</span>
+          <span>🕘 {{ r.start_at|date:"n/j H:i" }}{% if r.duration_label %}({{ r.duration_label }}){% endif %}</span>
           {% if r.vc_tool %}<span>🎧 {{ r.vc_tool }}</span>{% endif %}
           <span>👤 {{ r.owner }}</span>
         </div>
-
-        {% if r.tags %}<div style="margin-top:10px;">{% for t in r.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</div>{% endif %}
+        <div>{% for t in r.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</div>
       </a>
     </li>
   {% empty %}

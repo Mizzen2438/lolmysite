@@ -17,8 +17,6 @@
   --danger: #e5534b;
   --discord: #5865f2;
   --radius: 10px;
-  --shadow-lift: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 12px 34px -12px rgba(10, 200, 185, 0.38);
 }
 
 * { box-sizing: border-box; }
@@ -82,11 +80,7 @@ a:hover { text-decoration: underline; }
   50% { opacity: 0.82; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .logo a,
-  .hero-bg,
-  .hero-eyebrow::before,
-  .badge-status-open.dot::before { animation: none; }
-  .recruit-card { transition: none; }
+  .logo a { animation: none; }
 }
 .nav { display: flex; gap: 14px; flex: 1; flex-wrap: wrap; }
 .nav a { color: var(--text-dim); font-size: 0.9rem; }
@@ -115,120 +109,16 @@ a:hover { text-decoration: underline; }
 }
 .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
 .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
-.btn-lg { padding: 13px 28px; font-size: 1rem; border-radius: 12px; }
 .btn-block { display: block; width: 100%; }
 
 /* ---------- hero ---------- */
 .hero {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  padding: 68px 0 60px;
+  padding: 36px 0 28px;
   text-align: center;
+  background: linear-gradient(180deg, #0d1830 0%, var(--bg) 100%);
 }
-/* Animated aurora/mesh backdrop — the "searching" energy of a queue screen. */
-.hero-bg {
-  position: absolute;
-  inset: -25% -10% -5%;
-  z-index: -2;
-  background:
-    radial-gradient(42% 55% at 16% 8%, rgba(10, 200, 185, 0.30), transparent 70%),
-    radial-gradient(46% 55% at 86% 4%, rgba(200, 170, 110, 0.24), transparent 70%),
-    radial-gradient(62% 72% at 50% 104%, rgba(88, 101, 242, 0.20), transparent 70%),
-    var(--bg);
-  animation: aurora 18s ease-in-out infinite alternate;
-}
-/* Faint tactical grid, masked so it fades toward the edges. */
-.hero-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-  background-size: 42px 42px;
-  -webkit-mask-image: radial-gradient(68% 68% at 50% 32%, #000, transparent 78%);
-  mask-image: radial-gradient(68% 68% at 50% 32%, #000, transparent 78%);
-}
-@keyframes aurora {
-  0% { transform: translate3d(-2%, -1%, 0) scale(1.02); }
-  100% { transform: translate3d(2%, 1.5%, 0) scale(1.07); }
-}
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--teal);
-  border: 1px solid rgba(10, 200, 185, 0.35);
-  background: rgba(10, 200, 185, 0.08);
-  padding: 5px 14px;
-  border-radius: 999px;
-  margin-bottom: 20px;
-}
-.hero-eyebrow::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--teal);
-  box-shadow: 0 0 9px var(--teal);
-  animation: pulse-dot 1.8s ease-in-out infinite;
-}
-.hero-title {
-  margin: 0 0 16px;
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  line-height: 1.12;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-.hero-title .grad {
-  background: linear-gradient(100deg, var(--teal) 10%, var(--gold) 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-.hero-sub {
-  margin: 0 auto 28px;
-  max-width: 540px;
-  color: var(--text-dim);
-  font-size: clamp(0.92rem, 2.2vw, 1.05rem);
-}
-.hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 46px;
-}
-.hero-stats .stat {
-  min-width: 104px;
-  background: rgba(22, 34, 60, 0.55);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 22px;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-.stat-num {
-  display: block;
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.stat-label { font-size: 0.74rem; color: var(--text-dim); letter-spacing: 0.04em; }
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.72); }
-}
+.hero h1 { margin: 0 0 8px; font-size: 1.5rem; color: var(--gold); }
+.hero p { margin: 0 0 18px; color: var(--text-dim); font-size: 0.95rem; }
 
 /* ---------- panels / cards ---------- */
 .panel {
@@ -244,71 +134,18 @@ a:hover { text-decoration: underline; }
 .card-list { display: grid; gap: 14px; padding: 0; margin: 16px 0; list-style: none; }
 
 .recruit-card {
-  position: relative;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: var(--radius);
+  padding: 16px;
   display: block;
   color: var(--text);
-  overflow: hidden;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-/* Accent rail that lights up on hover. */
-.recruit-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(var(--teal), var(--teal-dark));
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-.recruit-card:hover {
-  border-color: var(--teal);
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-glow);
-  text-decoration: none;
-}
-.recruit-card:hover::before { opacity: 1; }
-/* De-emphasise non-open posts; restore them on hover. */
-.recruit-card.is-dim { opacity: 0.6; }
-.recruit-card.is-dim:hover { opacity: 1; box-shadow: var(--shadow-lift); border-color: var(--border); }
-.recruit-card .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.recruit-card .title { font-weight: 700; font-size: 1.02rem; margin: 11px 0 0; }
-.recruit-card .meta { color: var(--text-dim); font-size: 0.82rem; margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+.recruit-card:hover { border-color: var(--teal); text-decoration: none; }
+.recruit-card .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.recruit-card .title { font-weight: 700; font-size: 1rem; flex: 1; min-width: 200px; }
+.recruit-card .meta { color: var(--text-dim); font-size: 0.82rem; margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
 .recruit-card .comment { color: var(--text-dim); font-size: 0.85rem; margin-top: 8px; }
-
-/* status dot ("searching" pulse on open posts) */
-.dot { display: inline-flex; align-items: center; gap: 6px; }
-.dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.badge-status-open.dot::before { box-shadow: 0 0 8px #7fe0a5; animation: pulse-dot 1.8s ease-in-out infinite; }
-
-/* fill progress */
-.fill { margin-top: 14px; }
-.fill-bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
-.fill-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--teal), var(--gold)); transition: width 0.3s ease; }
-.fill-text { display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-dim); margin-top: 6px; }
-.fill-urgent { color: var(--gold); font-weight: 700; }
-
-/* lane chips with role icons */
-.lane-row { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
-.lane-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 9px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  border: 1px dashed var(--border);
-  color: var(--text-dim);
-}
-.lane-chip.filled { border-style: solid; border-color: var(--teal-dark); color: var(--teal); background: rgba(10, 200, 185, 0.08); }
-.lane-chip.wanted { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(200, 170, 110, 0.06); }
-.lane-ico { width: 15px; height: 15px; flex: none; }
 
 /* ---------- badges / tags ---------- */
 .badge {
