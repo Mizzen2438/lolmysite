@@ -90,6 +90,7 @@ class CreateFormTests(TestCase):
             "rank_min": "2", "rank_max": "4", "start_at": future_str(),
             "duration_label": "2〜3時間", "vc_tool": "Discord VC(聞き専OK)",
             "tags": ["エンジョイ"], "comment": "楽しくやりましょう",
+            "discord_invite_url": "https://discord.gg/party",
         }
         data.update(over)
         return data
@@ -126,6 +127,12 @@ class CreateFormTests(TestCase):
     def test_ng_word_rejected(self):
         form = RecruitmentCreateForm(self._data(comment="死ね"))
         self.assertFalse(form.is_valid())
+
+    def test_discord_invite_url_required(self):
+        # 招待リンク未設定だと成立後に集合導線が出ないため必須(F-DSC-01/03)。
+        form = RecruitmentCreateForm(self._data(discord_invite_url=""))
+        self.assertFalse(form.is_valid())
+        self.assertIn("discord_invite_url", form.errors)
 
 
 class ListViewTests(TestCase):
@@ -179,6 +186,19 @@ class DetailAndPermissionTests(TestCase):
 
     def test_invite_visible_to_owner(self):
         self.client.force_login(self.owner, backend=BACKEND)
+        resp = self.client.get(reverse("recruitment_detail", args=[self.rec.pk]))
+        self.assertTrue(resp.context["can_view_invite"])
+        self.assertContains(resp, "discord.gg/abc")
+
+    def test_invite_visible_to_approved_participant_after_match(self):
+        # マッチング成立後、承認された参加者に招待リンクが発行される(F-DSC-03)。
+        from applications import services
+
+        self.other.riot_puuid = "PU-other"
+        self.other.save(update_fields=["riot_puuid"])
+        app = services.apply(self.other, self.rec, "MID")
+        services.approve(app)
+        self.client.force_login(self.other, backend=BACKEND)
         resp = self.client.get(reverse("recruitment_detail", args=[self.rec.pk]))
         self.assertTrue(resp.context["can_view_invite"])
         self.assertContains(resp, "discord.gg/abc")
