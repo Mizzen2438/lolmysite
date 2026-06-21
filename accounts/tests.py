@@ -251,6 +251,17 @@ class RiotServiceTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.rank_solo, "プラチナ IV")
 
+    def test_refresh_riot_api_error_is_translated(self):
+        # A Riot API failure during refresh must surface as a user-facing
+        # RiotLinkError, not leak the raw RiotError (which would 500 the view).
+        self.user.riot_puuid = "PUUID-1"
+        self.user.save()
+        with mock.patch.object(
+            services.riot, "fetch_ranks", side_effect=riot.RiotConfigError
+        ):
+            with self.assertRaises(services.RiotLinkError):
+                services.refresh_rank(self.user, force=True)
+
 
 class RiotViewTests(TestCase):
     def setUp(self):
@@ -281,6 +292,17 @@ class RiotViewTests(TestCase):
     def test_refresh_requires_post(self):
         resp = self.client.get(reverse("riot_refresh"))
         self.assertEqual(resp.status_code, 405)
+
+    def test_refresh_riot_api_error_redirects_not_500(self):
+        # Regression: a Riot API failure on refresh used to bubble up as an
+        # unhandled exception (HTTP 500). It must now redirect to mypage.
+        self.user.riot_puuid = "PUUID-1"
+        self.user.save()
+        with mock.patch.object(
+            services.riot, "fetch_ranks", side_effect=riot.RiotConfigError
+        ):
+            resp = self.client.post(reverse("riot_refresh"))
+        self.assertRedirects(resp, reverse("mypage"))
 
 
 class RefreshRanksCommandTests(TestCase):

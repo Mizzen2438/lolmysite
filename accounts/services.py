@@ -81,7 +81,19 @@ def can_refresh(user: User) -> bool:
 
 
 def _apply_ranks(user: User) -> None:
-    ranks = riot.fetch_ranks(user.riot_puuid)
+    # fetch_ranks talks to the Riot API, so translate its typed errors into a
+    # user-facing RiotLinkError. Without this, an API failure (expired key,
+    # rate limit, outage) propagates raw and the refresh/link views 500.
+    try:
+        ranks = riot.fetch_ranks(user.riot_puuid)
+    except riot.RiotConfigError as exc:
+        raise RiotLinkError("現在 Riot 連携を利用できません。時間をおいてお試しください。") from exc
+    except riot.RiotRateLimited as exc:
+        raise RiotLinkError("混み合っています。しばらくしてからお試しください。") from exc
+    except riot.RiotNotFound as exc:
+        raise RiotLinkError("ランク情報が取得できませんでした。Riot ID をご確認ください。") from exc
+    except riot.RiotError as exc:
+        raise RiotLinkError("Riot との通信でエラーが発生しました。") from exc
     user.rank_solo = ranks["solo"]
     user.rank_flex = ranks["flex"]
     user.rank_fetched_at = timezone.now()
